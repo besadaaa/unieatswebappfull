@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase'
 import type { MenuItem } from '@/lib/supabase'
+import { MenuItemService, CompleteMenuItem } from '@/lib/menu-item-service'
 
 // Load menu items from Supabase
 export const getMenuItems = async (cafeteriaId?: string): Promise<MenuItem[]> => {
@@ -53,66 +54,79 @@ export const getMenuItemsByCategory = async (cafeteriaId?: string) => {
 
 export async function addMenuItem(formData: FormData | any) {
   try {
-    let itemData: Partial<MenuItem>
+    let menuItemData: CompleteMenuItem
 
     if (formData instanceof FormData) {
+      // Parse all form data fields
       const name = formData.get("name") as string
       const description = formData.get("description") as string
       const price = Number.parseFloat(formData.get("price") as string)
       const category = formData.get("category") as string
       const status = (formData.get("status") as string) || "available"
       const cafeteriaId = formData.get("cafeteria_id") as string || "1"
+      const preparationTime = Number.parseInt(formData.get("preparation_time") as string) || 15
 
-      // Parse nutrition info if provided
-      const nutritionInfo = formData.get("nutrition_info") as string
-      let parsedNutritionInfo = null
-      if (nutritionInfo) {
+      // Parse nutrition info
+      let nutritionInfo = {}
+      const nutritionInfoStr = formData.get("nutrition_info") as string
+      if (nutritionInfoStr) {
         try {
-          parsedNutritionInfo = JSON.parse(nutritionInfo)
+          nutritionInfo = JSON.parse(nutritionInfoStr)
         } catch (e) {
           console.warn('Invalid nutrition info JSON:', e)
         }
       }
 
-      // Parse ingredients if provided
-      const ingredients = formData.get("ingredients") as string
-      let parsedIngredients = null
-      if (ingredients) {
+      // Parse ingredients
+      let ingredients: string[] = []
+      const ingredientsStr = formData.get("ingredients") as string
+      if (ingredientsStr) {
         try {
-          parsedIngredients = JSON.parse(ingredients)
+          ingredients = JSON.parse(ingredientsStr)
         } catch (e) {
           console.warn('Invalid ingredients JSON:', e)
         }
       }
 
-      // Parse customization options if provided
-      const customizationOptions = formData.get("customization_options") as string
-      let parsedCustomizationOptions = null
-      if (customizationOptions) {
+      // Parse allergens
+      let allergens: string[] = []
+      const allergensStr = formData.get("allergens") as string
+      if (allergensStr) {
         try {
-          parsedCustomizationOptions = JSON.parse(customizationOptions)
+          allergens = JSON.parse(allergensStr)
+        } catch (e) {
+          console.warn('Invalid allergens JSON:', e)
+        }
+      }
+
+      // Parse customization options
+      let customizationOptions: any[] = []
+      const customizationOptionsStr = formData.get("customization_options") as string
+      if (customizationOptionsStr) {
+        try {
+          customizationOptions = JSON.parse(customizationOptionsStr)
         } catch (e) {
           console.warn('Invalid customization options JSON:', e)
         }
       }
 
-      itemData = {
+      menuItemData = {
         cafeteria_id: cafeteriaId,
         name,
         description,
         price,
         category,
         is_available: status === 'available',
-        image_url: "/placeholder.svg?height=48&width=48&query=" + encodeURIComponent(name),
-        nutrition_info: parsedNutritionInfo,
-        ingredients: parsedIngredients,
-        customization_options: parsedCustomizationOptions,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        image_url: formData.get("image_url") as string || "/placeholder.svg?height=48&width=48&query=" + encodeURIComponent(name),
+        nutrition_info: nutritionInfo,
+        ingredients,
+        allergens,
+        customization_options: customizationOptions,
+        preparation_time: preparationTime
       }
     } else {
-      // If it's already an object, handle both formats
-      itemData = {
+      // Handle object format with comprehensive field mapping
+      menuItemData = {
         cafeteria_id: formData.cafeteria_id || formData.cafeteriaId,
         name: formData.name,
         description: formData.description,
@@ -121,27 +135,29 @@ export async function addMenuItem(formData: FormData | any) {
         is_available: formData.is_available !== undefined ? formData.is_available :
                      formData.available !== undefined ? formData.available :
                      formData.status === 'available',
-        image_url: formData.image_url || formData.image || "/placeholder.svg?height=48&width=48&query=" + encodeURIComponent(formData.name),
-        nutrition_info: formData.nutrition_info || formData.nutritionalInfo,
-        ingredients: formData.ingredients,
-        customization_options: formData.customization_options || formData.customizationOptions,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        image_url: formData.image_url || formData.image,
+        nutrition_info: formData.nutrition_info || formData.nutritionalInfo || {},
+        ingredients: formData.ingredients || [],
+        allergens: formData.allergens || [],
+        customization_options: formData.customization_options || formData.customizationOptions || [],
+        preparation_time: formData.preparation_time || formData.preparationTime || 15
       }
     }
 
-    const { data, error } = await supabase
-      .from('menu_items')
-      .insert([itemData])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error adding menu item:', error)
-      return { success: false, message: error.message }
+    // Validate the menu item
+    const validation = MenuItemService.validateMenuItem(menuItemData)
+    if (!validation.valid) {
+      return { success: false, message: validation.errors.join(', ') }
     }
 
-    return { success: true, message: "Menu item added successfully", data }
+    // Use the comprehensive service to create the item
+    const result = await MenuItemService.createMenuItem(menuItemData)
+
+    if (result.success) {
+      return { success: true, message: "Menu item added successfully", data: result.data }
+    } else {
+      return { success: false, message: result.error || "Failed to add menu item" }
+    }
   } catch (error) {
     console.error('Error adding menu item:', error)
     return { success: false, message: "An unexpected error occurred" }
@@ -151,104 +167,118 @@ export async function addMenuItem(formData: FormData | any) {
 // Update menu item function
 export async function updateMenuItem(data: FormData | any) {
   try {
-    let itemData: Partial<MenuItem> & { id: string }
+    let id: string
+    let updates: Partial<CompleteMenuItem> = {}
 
     if (data instanceof FormData) {
-      const id = data.get("id") as string
+      id = data.get("id") as string
+
+      // Parse all possible update fields
       const name = data.get("name") as string
       const description = data.get("description") as string
-      const price = Number.parseFloat(data.get("price") as string)
+      const price = data.get("price") as string
       const category = data.get("category") as string
       const status = data.get("status") as string
       const available = data.get("available") as string
       const image_url = data.get("image_url") as string
+      const preparationTime = data.get("preparation_time") as string
 
-      // Parse nutrition info if provided
-      const nutritionInfo = data.get("nutrition_info") as string
-      let parsedNutritionInfo = null
-      if (nutritionInfo) {
+      if (name) updates.name = name
+      if (description) updates.description = description
+      if (price) updates.price = Number.parseFloat(price)
+      if (category) updates.category = category
+      if (image_url) updates.image_url = image_url
+      if (preparationTime) updates.preparation_time = Number.parseInt(preparationTime)
+
+      // Handle availability
+      if (status) {
+        updates.is_available = status === 'available'
+      } else if (available) {
+        updates.is_available = available === 'true'
+      }
+
+      // Parse nutrition info
+      const nutritionInfoStr = data.get("nutrition_info") as string
+      if (nutritionInfoStr) {
         try {
-          parsedNutritionInfo = JSON.parse(nutritionInfo)
+          updates.nutrition_info = JSON.parse(nutritionInfoStr)
         } catch (e) {
           console.warn('Invalid nutrition info JSON:', e)
         }
       }
 
-      // Parse ingredients if provided
-      const ingredients = data.get("ingredients") as string
-      let parsedIngredients = null
-      if (ingredients) {
+      // Parse ingredients
+      const ingredientsStr = data.get("ingredients") as string
+      if (ingredientsStr) {
         try {
-          parsedIngredients = JSON.parse(ingredients)
+          updates.ingredients = JSON.parse(ingredientsStr)
         } catch (e) {
           console.warn('Invalid ingredients JSON:', e)
         }
       }
 
-      // Parse customization options if provided
-      const customizationOptions = data.get("customization_options") as string
-      let parsedCustomizationOptions = null
-      if (customizationOptions) {
+      // Parse allergens
+      const allergensStr = data.get("allergens") as string
+      if (allergensStr) {
         try {
-          parsedCustomizationOptions = JSON.parse(customizationOptions)
+          updates.allergens = JSON.parse(allergensStr)
+        } catch (e) {
+          console.warn('Invalid allergens JSON:', e)
+        }
+      }
+
+      // Parse customization options
+      const customizationOptionsStr = data.get("customization_options") as string
+      if (customizationOptionsStr) {
+        try {
+          updates.customization_options = JSON.parse(customizationOptionsStr)
         } catch (e) {
           console.warn('Invalid customization options JSON:', e)
         }
       }
-
-      // Handle availability - check both status and available fields
-      let isAvailable = true
-      if (status) {
-        isAvailable = status === 'available'
-      } else if (available) {
-        isAvailable = available === 'true'
-      }
-
-      itemData = {
-        id,
-        name,
-        description,
-        price,
-        category,
-        is_available: isAvailable,
-        image_url,
-        nutrition_info: parsedNutritionInfo,
-        ingredients: parsedIngredients,
-        customization_options: parsedCustomizationOptions,
-        updated_at: new Date().toISOString()
-      }
     } else {
-      // If data is already an object, handle both formats
-      itemData = {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        price: parseFloat(data.price),
-        category: data.category,
-        is_available: data.is_available !== undefined ? data.is_available :
-                     data.available !== undefined ? data.available :
-                     data.status === 'available',
-        image_url: data.image_url || data.image,
-        nutrition_info: data.nutrition_info || data.nutritionalInfo,
-        ingredients: data.ingredients,
-        customization_options: data.customization_options || data.customizationOptions,
-        updated_at: new Date().toISOString()
+      // Handle object format
+      id = data.id
+
+      if (data.name !== undefined) updates.name = data.name
+      if (data.description !== undefined) updates.description = data.description
+      if (data.price !== undefined) updates.price = parseFloat(data.price)
+      if (data.category !== undefined) updates.category = data.category
+      if (data.image_url !== undefined || data.image !== undefined) {
+        updates.image_url = data.image_url || data.image
+      }
+      if (data.preparation_time !== undefined || data.preparationTime !== undefined) {
+        updates.preparation_time = data.preparation_time || data.preparationTime
+      }
+
+      // Handle availability
+      if (data.is_available !== undefined) {
+        updates.is_available = data.is_available
+      } else if (data.available !== undefined) {
+        updates.is_available = data.available
+      } else if (data.status !== undefined) {
+        updates.is_available = data.status === 'available'
+      }
+
+      // Handle complex fields
+      if (data.nutrition_info !== undefined || data.nutritionalInfo !== undefined) {
+        updates.nutrition_info = data.nutrition_info || data.nutritionalInfo
+      }
+      if (data.ingredients !== undefined) updates.ingredients = data.ingredients
+      if (data.allergens !== undefined) updates.allergens = data.allergens
+      if (data.customization_options !== undefined || data.customizationOptions !== undefined) {
+        updates.customization_options = data.customization_options || data.customizationOptions
       }
     }
 
-    const { data: updatedItem, error } = await supabase
-      .from('menu_items')
-      .update(itemData)
-      .eq('id', itemData.id)
-      .select()
-      .single()
+    // Use the comprehensive service to update the item
+    const result = await MenuItemService.updateMenuItem(id, updates)
 
-    if (error) {
-      console.error("Error updating menu item:", error)
-      throw new Error(error.message)
+    if (result.success) {
+      return result.data
+    } else {
+      throw new Error(result.error || "Failed to update menu item")
     }
-
-    return updatedItem
   } catch (error) {
     console.error("Error updating menu item:", error)
     throw error
