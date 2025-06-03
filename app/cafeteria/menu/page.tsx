@@ -47,6 +47,7 @@ import { getCurrentUser, getCafeterias } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { formatCurrency } from "@/lib/currency"
+import { useMenuItemsSync, RealtimeEvent } from "@/lib/realtime-sync"
 
 
 
@@ -388,6 +389,48 @@ export default function MenuPage() {
     return () => {
       window.removeEventListener("online", handleOnlineStatus)
       window.removeEventListener("offline", handleOnlineStatus)
+    }
+  }, [])
+
+  // Real-time sync for menu items
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null
+
+    const setupRealtimeSync = async () => {
+      try {
+        const user = await getCurrentUser()
+        const cafeterias = await getCafeterias()
+        const userCafeteria = cafeterias.find(c => c.owner_id === user?.id) || cafeterias[0]
+
+        if (userCafeteria) {
+          // Import realtime sync dynamically
+          const { realtimeSync } = await import('@/lib/realtime-sync')
+
+          unsubscribe = realtimeSync.subscribeToMenuItems(userCafeteria.id, (event: RealtimeEvent) => {
+            console.log('Real-time menu update:', event)
+
+            // Refresh menu items when changes occur
+            if (event.eventType === 'INSERT' || event.eventType === 'UPDATE' || event.eventType === 'DELETE') {
+              fetchMenuItems()
+
+              toast({
+                title: "Menu Updated",
+                description: `Menu items have been ${event.eventType.toLowerCase()}d in real-time.`,
+              })
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Failed to setup real-time sync:', error)
+      }
+    }
+
+    setupRealtimeSync()
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
     }
   }, [])
 

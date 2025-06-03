@@ -3,7 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+})
 
 // Service role client for admin operations (bypasses RLS) - SERVER SIDE ONLY
 export const createSupabaseAdmin = () => {
@@ -204,15 +214,49 @@ export interface ExportLog {
   created_at?: string
 }
 
+// Connection test function
+export const testSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('cafeterias')
+      .select('id, name')
+      .limit(1)
+
+    if (error) {
+      console.error('Supabase connection test failed:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('Supabase connection test error:', error)
+    return { success: false, error: 'Connection failed' }
+  }
+}
+
 // Auth helper functions
 export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error) {
+      console.error('Error getting current user:', error)
+      return null
+    }
+    return user
+  } catch (error) {
+    console.error('Error getting current user:', error)
+    return null
+  }
 }
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut()
-  return { error }
+  try {
+    const { error } = await supabase.auth.signOut()
+    return { error }
+  } catch (error) {
+    console.error('Error signing out:', error)
+    return { error: 'Sign out failed' }
+  }
 }
 
 // Theme preference functions

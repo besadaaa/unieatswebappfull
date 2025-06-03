@@ -107,20 +107,27 @@ export async function addMenuItem(formData: FormData | any) {
         nutrition_info: parsedNutritionInfo,
         ingredients: parsedIngredients,
         customization_options: parsedCustomizationOptions,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
     } else {
       // If it's already an object, handle both formats
       itemData = {
-        ...formData,
-        // Convert available to is_available if needed
+        cafeteria_id: formData.cafeteria_id || formData.cafeteriaId,
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        category: formData.category,
         is_available: formData.is_available !== undefined ? formData.is_available :
                      formData.available !== undefined ? formData.available :
-                     formData.status === 'available'
+                     formData.status === 'available',
+        image_url: formData.image_url || formData.image || "/placeholder.svg?height=48&width=48&query=" + encodeURIComponent(formData.name),
+        nutrition_info: formData.nutrition_info || formData.nutritionalInfo,
+        ingredients: formData.ingredients,
+        customization_options: formData.customization_options || formData.customizationOptions,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-
-      // Remove old fields that don't exist in database
-      delete itemData.available
-      delete itemData.status
     }
 
     const { data, error } = await supabase
@@ -208,20 +215,25 @@ export async function updateMenuItem(data: FormData | any) {
         nutrition_info: parsedNutritionInfo,
         ingredients: parsedIngredients,
         customization_options: parsedCustomizationOptions,
+        updated_at: new Date().toISOString()
       }
     } else {
       // If data is already an object, handle both formats
       itemData = {
-        ...data,
-        // Convert available to is_available if needed
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        price: parseFloat(data.price),
+        category: data.category,
         is_available: data.is_available !== undefined ? data.is_available :
                      data.available !== undefined ? data.available :
-                     data.status === 'available'
+                     data.status === 'available',
+        image_url: data.image_url || data.image,
+        nutrition_info: data.nutrition_info || data.nutritionalInfo,
+        ingredients: data.ingredients,
+        customization_options: data.customization_options || data.customizationOptions,
+        updated_at: new Date().toISOString()
       }
-
-      // Remove old fields that don't exist in database
-      delete itemData.available
-      delete itemData.status
     }
 
     const { data: updatedItem, error } = await supabase
