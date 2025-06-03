@@ -1,0 +1,447 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme - UniEats brand colors */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 16 100% 66%; /* Orange #FF7043 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 122 39% 49%; /* Green #4CAF50 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 35 100% 65%; /* Light orange #FFB74D */
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 16 100% 66%;
+    --radius: 0.75rem;
+
+    /* Chart colors */
+    --chart-1: 16 100% 66%; /* Orange */
+    --chart-2: 122 39% 49%; /* Green */
+    --chart-3: 35 100% 65%; /* Light orange */
+    --chart-4: 200 100% 50%; /* Blue */
+    --chart-5: 280 100% 70%; /* Purple */
+
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 16 100% 66%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 16 100% 66%;
+  }
+
+  .dark {
+    /* Dark theme - adjusted for better contrast */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 16 100% 70%; /* Lighter orange for dark mode */
+    --primary-foreground: 0 0% 9%;
+    --secondary: 122 39% 55%; /* Lighter green for dark mode */
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 35 100% 70%; /* Lighter accent for dark mode */
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 16 100% 70%;
+
+    /* Chart colors for dark mode */
+    --chart-1: 16 100% 70%;
+    --chart-2: 122 39% 55%;
+    --chart-3: 35 100% 70%;
+    --chart-4: 200 100% 60%;
+    --chart-5: 280 100% 75%;
+
+    /* Sidebar colors for dark mode */
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 16 100% 70%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 16 100% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+
+  /* Ensure proper contrast in light mode */
+  .light {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  /* Light theme specific improvements */
+  .light .bg-card {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+
+  /* Chart improvements for light mode */
+  .light .recharts-cartesian-grid line {
+    stroke: hsl(var(--border));
+  }
+
+  .light .recharts-text {
+    fill: hsl(var(--foreground));
+  }
+}
+
+/* Optimized 2025 Animations - Hardware Accelerated */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 15px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale3d(0.9, 0.9, 1);
+  }
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale3d(0.8, 0.8, 1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.8), 0 0 60px rgba(59, 130, 246, 0.3);
+  }
+}
+
+@keyframes card-hover {
+  from {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  to {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 0 30px rgba(251, 146, 60, 0.3);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Ultra-Fast Animation Classes - Performance Optimized */
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.15s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.2s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.15s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.15s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.2s ease-out;
+}
+
+.animate-float {
+  /* Disabled for performance */
+}
+
+.animate-pulse-glow {
+  /* Disabled for performance */
+}
+
+.animate-shimmer {
+  background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 2s infinite linear;
+}
+
+.animate-glow-pulse {
+  /* Disabled for performance */
+}
+
+/* Optimized Modern Component Styles */
+.modern-card {
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  will-change: transform;
+}
+
+.modern-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+
+.btn-modern {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  will-change: transform;
+}
+
+.btn-modern:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.floating-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(10px);
+  opacity: 0.2;
+  /* Animation disabled for performance */
+}
+
+.floating-orb:nth-child(1) {
+  /* Animation disabled for performance */
+}
+
+.floating-orb:nth-child(2) {
+  /* Animation disabled for performance */
+}
+
+.floating-orb:nth-child(3) {
+  /* Animation disabled for performance */
+}
+
+/* Navigation Enhancements */
+.nav-modern {
+  backdrop-filter: blur(4px);
+  background: rgba(15, 20, 36, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 0.1s ease;
+}
+
+.nav-item {
+  position: relative;
+  transition: transform 0.1s ease, color 0.1s ease;
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  transition: width 0.1s ease;
+}
+
+.nav-item:hover::before,
+.nav-item.active::before {
+  width: 100%;
+}
+
+.nav-item:hover {
+  transform: translateY(-1px);
+  color: #fb923c;
+}
+
+/* Ultra-Fast Stagger Animation Delays */
+.stagger-1 { animation-delay: 0.02s; }
+.stagger-2 { animation-delay: 0.04s; }
+.stagger-3 { animation-delay: 0.06s; }
+.stagger-4 { animation-delay: 0.08s; }
+.stagger-5 { animation-delay: 0.10s; }
+.stagger-6 { animation-delay: 0.12s; }
+.stagger-7 { animation-delay: 0.14s; }
+.stagger-8 { animation-delay: 0.16s; }
+.stagger-9 { animation-delay: 0.18s; }
+.stagger-10 { animation-delay: 0.20s; }
+
+/* Optimized Hover Effects */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.4);
+}
+
+/* PREVENT TEXT FLASHING - STABLE TITLES */
+h1, h2, h3, h4, h5, h6, .gradient-text {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Keep animations only for containers, not text */
+.animate-shimmer.gradient-text {
+  animation: none !important;
+}
+
+/* Stable logo and brand text */
+.gradient-text {
+  background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* No animation for stability */
+}
+
+/* CONSISTENT DARK MODE FOR BOTH PORTALS */
+
+/* Loading States */
+.loading-shimmer {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: pulse 1.5s infinite;
+}
