@@ -505,29 +505,33 @@ export default function MenuPage() {
       // Get menu items filtered by cafeteria ID
       const items = await getMenuItems(userCafeteria.id)
 
-      // Convert Supabase data to component format
+      // Convert Supabase data to component format with all fields
       const formattedItems = items.map(item => ensureItemProperties({
         id: item.id,
         name: item.name,
         description: item.description,
-        price: Number.parseFloat(item.price),
+        price: typeof item.price === 'number' ? item.price : Number.parseFloat(item.price || "0"),
         category: item.category,
         image: item.image_url || "/diverse-food-spread.png",
         available: item.is_available,
         rating: Number.parseFloat(item.rating || "0"),
         totalRatings: item.total_ratings || 0,
         tags: [],
-        allergens: [],
-        nutritionalInfo: {
+        allergens: Array.isArray(item.allergens) ? item.allergens : [],
+        nutritionalInfo: item.nutrition_info || {
           calories: 0,
           protein: 0,
           carbs: 0,
           fat: 0,
         },
-        preparationTime: 15,
+        ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+        preparationTime: item.preparation_time || 15,
         featured: false,
         specialOffer: false,
-        discountPercentage: 0
+        discountPercentage: 0,
+        customizationOptions: item.customization_options || [],
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
       }))
 
       setMenuItems(formattedItems)
@@ -807,18 +811,30 @@ export default function MenuPage() {
         return
       }
 
-      // Prepare menu item data for Supabase
+      // Prepare comprehensive menu item data for Supabase
+      console.log("Adding item with form data:", formData)
+      console.log("Form data ingredients:", formData.ingredients)
+      console.log("Form data allergens:", formData.allergens)
+      console.log("Form data nutritionalInfo:", formData.nutritionalInfo)
+
       const menuItemData = {
         cafeteria_id: userCafeteria.id,
         name: formData.name,
         description: formData.description,
-        price: formData.price.toString(),
+        price: formData.price,
         category: formData.category,
         is_available: formData.available,
         image_url: formData.image || null,
-        rating: "0",
+        nutrition_info: formData.nutritionalInfo,
+        ingredients: formData.ingredients,
+        allergens: formData.allergens,
+        customization_options: [], // Will be added later when customization is implemented
+        preparation_time: formData.preparationTime,
+        rating: 0,
         total_ratings: 0
       }
+
+      console.log("Menu item data being sent:", menuItemData)
 
       if (isOffline) {
         // Store in cached items for later sync
@@ -944,25 +960,27 @@ export default function MenuPage() {
     setIsProcessing(true)
     try {
       console.log("Updating item:", currentItem.id)
+      console.log("Form data ingredients:", formData.ingredients)
+      console.log("Form data allergens:", formData.allergens)
+      console.log("Form data nutritionalInfo:", formData.nutritionalInfo)
 
-      // Create a FormData object for the update
-      const formDataObj = new FormData()
-      formDataObj.append("id", currentItem.id.toString())
-      formDataObj.append("name", formData.name)
-      formDataObj.append("description", formData.description)
-      formDataObj.append("price", formData.price.toString())
-      formDataObj.append("category", formData.category)
-      formDataObj.append("image", formData.image)
-      formDataObj.append("available", formData.available.toString())
-      formDataObj.append("preparationTime", formData.preparationTime.toString())
-      formDataObj.append("featured", formData.featured.toString())
-      formDataObj.append("specialOffer", formData.specialOffer.toString())
-      formDataObj.append("discountPercentage", formData.discountPercentage.toString())
-      formDataObj.append("tags", JSON.stringify(formData.tags))
-      formDataObj.append("allergens", JSON.stringify(formData.allergens))
-      formDataObj.append("nutritionalInfo", JSON.stringify(formData.nutritionalInfo))
-      formDataObj.append("ingredients", JSON.stringify(formData.ingredients))
-      formDataObj.append("updatedAt", new Date().toISOString())
+      // Create comprehensive update data object
+      const updateData = {
+        id: currentItem.id,
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        category: formData.category,
+        image_url: formData.image,
+        is_available: formData.available,
+        nutrition_info: formData.nutritionalInfo,
+        ingredients: formData.ingredients,
+        allergens: formData.allergens,
+        customization_options: [], // Will be added when customization is implemented
+        preparation_time: formData.preparationTime
+      }
+
+      console.log("Update data being sent:", updateData)
 
       const updatedItem = {
         ...currentItem,
@@ -985,16 +1003,15 @@ export default function MenuPage() {
           variant: "warning",
         })
       } else {
-        // Send to server - use the FormData object
-        await updateMenuItem(formDataObj)
+        // Send to server with comprehensive data
+        await updateMenuItem(updateData)
 
-        // Update local state
-        setMenuItems((prev) => prev.map((item) => (item.id === currentItem.id ? updatedItem : item)))
+        // Refresh menu items to get the latest data from Supabase
+        await fetchMenuItems()
 
         toast({
           title: "Item updated successfully",
-          description: `${updatedItem.name} has been updated.`,
-          variant: "success",
+          description: `${formData.name} has been updated with all fields.`,
         })
       }
 

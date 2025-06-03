@@ -870,15 +870,19 @@ export function Charts({
     const bgColors = getBackgroundColors()
     const bdrColors = getBorderColors()
 
-    // Use category colors for pie and doughnut charts if possible
+    // Use provided colors first, then category colors, then defaults
     const finalBgColors =
       type === "pie" || type === "doughnut"
-        ? labels.map((label) => getCategoryColor(label) || (Array.isArray(bgColors) ? bgColors[0] : bgColors))
+        ? (backgroundColor && Array.isArray(backgroundColor) && backgroundColor.length > 0)
+          ? backgroundColor // Use provided backgroundColor prop first
+          : labels.map((label) => getCategoryColor(label) || (Array.isArray(bgColors) ? bgColors[0] : bgColors))
         : bgColors
 
     const finalBorderColors =
       type === "pie" || type === "doughnut"
-        ? labels.map((label) => getCategoryColor(label) || (Array.isArray(bdrColors) ? bdrColors[0] : bdrColors))
+        ? (borderColor && Array.isArray(borderColor) && borderColor.length > 0)
+          ? borderColor // Use provided borderColor prop first
+          : labels.map((label) => getCategoryColor(label) || (Array.isArray(bdrColors) ? bdrColors[0] : bdrColors))
         : bdrColors
 
     // Enhanced dataset configuration

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import { formatCurrency } from "@/lib/currency"
+import { DashboardService, DashboardMetrics, ChartData } from "@/lib/dashboard-service"
 import {
   Calendar,
   ChevronDown,
@@ -21,26 +22,13 @@ import {
   Coffee,
 } from "lucide-react"
 
-// Types for dashboard data
-interface DashboardMetrics {
-  todayOrders: number
-  todayRevenue: number
-  todayCustomers: number
-  totalMenuItems: number
-}
-
-interface ChartData {
-  revenue: number[]
-  orders: number[]
-  customers: number[]
-  months: string[]
-}
-
 export default function CafeteriaDashboard() {
   const [timeRange, setTimeRange] = useState("This Month")
   const [chartView, setChartView] = useState("revenue")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [cafeteriaId, setCafeteriaId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   // Dashboard data state
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics>({
@@ -48,6 +36,14 @@ export default function CafeteriaDashboard() {
     todayRevenue: 0,
     todayCustomers: 0,
     totalMenuItems: 0,
+    weeklyOrders: 0,
+    weeklyRevenue: 0,
+    monthlyOrders: 0,
+    monthlyRevenue: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    averageOrderValue: 0,
+    topSellingItems: []
   })
 
   const [chartData, setChartData] = useState<ChartData>({
@@ -55,36 +51,50 @@ export default function CafeteriaDashboard() {
     orders: [],
     customers: [],
     months: [],
+    dailyRevenue: [],
+    dailyOrders: [],
+    days: []
   })
 
-  // Fetch dashboard data
+  // Fetch dashboard data from Supabase
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true)
+      setError(null)
 
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Mock data for cafeteria dashboard
-      const mockMetrics: DashboardMetrics = {
-        todayOrders: 45,
-        todayRevenue: 1250.75,
-        todayCustomers: 38,
-        totalMenuItems: 24,
+      // Get cafeteria ID if not already set
+      let currentCafeteriaId = cafeteriaId
+      if (!currentCafeteriaId) {
+        currentCafeteriaId = await DashboardService.getCurrentCafeteriaId()
+        if (!currentCafeteriaId) {
+          setError("No cafeteria found for this user")
+          return
+        }
+        setCafeteriaId(currentCafeteriaId)
       }
 
-      const mockChartData: ChartData = {
-        revenue: [2800, 3200, 2900, 3500, 4100, 3800, 4200, 3900, 3600, 4000, 3700, 3900],
-        orders: [120, 135, 128, 145, 160, 152, 168, 155, 142, 158, 148, 155],
-        customers: [95, 108, 102, 118, 125, 120, 132, 122, 115, 128, 118, 125],
-        months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-      }
+      console.log("Fetching dashboard data for cafeteria:", currentCafeteriaId, "Time range:", timeRange)
 
-      setDashboardMetrics(mockMetrics)
-      setChartData(mockChartData)
+      // Fetch real metrics and chart data
+      const [metrics, chartDataResult] = await Promise.all([
+        DashboardService.getDashboardMetrics(currentCafeteriaId, timeRange),
+        DashboardService.getChartData(currentCafeteriaId, timeRange)
+      ])
+
+      console.log("Dashboard metrics:", metrics)
+      console.log("Chart data:", chartDataResult)
+
+      setDashboardMetrics(metrics)
+      setChartData(chartDataResult)
+
+      toast({
+        title: "Dashboard Updated",
+        description: `Loaded data for ${timeRange.toLowerCase()}`,
+      })
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      setError("Failed to load dashboard data")
       toast({
         title: "Error loading dashboard",
         description: "Failed to load dashboard data. Please try again.",
@@ -163,10 +173,32 @@ export default function CafeteriaDashboard() {
     }, 800)
   }
 
+  // Show error state
+  if (error) {
+    return (
+      <div className="p-6 animate-fade-in">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Coffee className="h-16 w-16 mx-auto mb-4 text-red-400" />
+            <h2 className="text-xl font-semibold text-white mb-2">Dashboard Error</h2>
+            <p className="text-slate-400 mb-4">{error}</p>
+            <Button onClick={fetchDashboardData} className="bg-blue-600 hover:bg-blue-700">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 animate-fade-in">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <h1 className="text-3xl font-bold gradient-text">Dashboard Overview</h1>
+          <div>
+            <h1 className="text-3xl font-bold gradient-text">Dashboard Overview</h1>
+            <p className="text-slate-400 mt-1">Real-time data from your cafeteria</p>
+          </div>
 
           <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
             <DropdownMenu>
@@ -371,34 +403,49 @@ export default function CafeteriaDashboard() {
                 <div className="h-[280px] rounded-xl loading-shimmer"></div>
               ) : (
                 <div className="chart-container chart-fade-in">
-                  <Charts
-                    title=""
-                    description=""
-                    type="pie"
-                    data={[25, 20, 18, 15, 12, 10, 8, 6]}
-                    labels={["Pizza", "Burger", "Sandwich", "Salad", "Coffee", "Pasta", "Soup", "Dessert"]}
-                    backgroundColor={[
-                      "rgba(245, 158, 11, 0.8)",
-                      "rgba(16, 185, 129, 0.8)",
-                      "rgba(129, 140, 248, 0.8)",
-                      "rgba(249, 115, 22, 0.8)",
-                      "rgba(6, 182, 212, 0.8)",
-                      "rgba(168, 85, 247, 0.8)",
-                      "rgba(236, 72, 153, 0.8)",
-                      "rgba(34, 197, 94, 0.8)"
-                    ]}
-                    borderColor={[
-                      "#f59e0b",
-                      "#10b981",
-                      "#818cf8",
-                      "#f97316",
-                      "#06b6d4",
-                      "#a855f7",
-                      "#ec4899",
-                      "#22c55e"
-                    ]}
-                    className="chart-title"
-                  />
+                  {dashboardMetrics.topSellingItems.length > 0 ? (
+                    <Charts
+                      title=""
+                      description=""
+                      type="pie"
+                      data={dashboardMetrics.topSellingItems.map(item => item.orders)}
+                      labels={dashboardMetrics.topSellingItems.map(item => item.name)}
+                      backgroundColor={[
+                        "rgba(245, 158, 11, 0.9)",   // Amber
+                        "rgba(16, 185, 129, 0.9)",   // Emerald
+                        "rgba(129, 140, 248, 0.9)",  // Indigo
+                        "rgba(249, 115, 22, 0.9)",   // Orange
+                        "rgba(6, 182, 212, 0.9)",    // Cyan
+                        "rgba(168, 85, 247, 0.9)",   // Purple
+                        "rgba(236, 72, 153, 0.9)",   // Pink
+                        "rgba(34, 197, 94, 0.9)",    // Green
+                        "rgba(239, 68, 68, 0.9)",    // Red
+                        "rgba(59, 130, 246, 0.9)"    // Blue
+                      ]}
+                      borderColor={[
+                        "#f59e0b",  // Amber
+                        "#10b981",  // Emerald
+                        "#818cf8",  // Indigo
+                        "#f97316",  // Orange
+                        "#06b6d4",  // Cyan
+                        "#a855f7",  // Purple
+                        "#ec4899",  // Pink
+                        "#22c55e",  // Green
+                        "#ef4444",  // Red
+                        "#3b82f6"   // Blue
+                      ]}
+                      height={280}
+                      className="chart-title"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-[280px] text-slate-400">
+                      <div className="text-center">
+                        <Coffee className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No sales data available</p>
+                        <p className="text-sm">Start taking orders to see popular items</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/5 to-orange-500/5 rounded-full blur-2xl"></div>

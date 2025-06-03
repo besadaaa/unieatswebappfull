@@ -1,6 +1,5 @@
-// Inventory-Menu Integration System
+// Enhanced Inventory-Menu Integration System with Automatic Checking
 import { supabase } from './supabase'
-import { createSystemNotification, logUserActivity } from './financial'
 
 export interface InventoryItem {
   id: string
@@ -10,9 +9,11 @@ export interface InventoryItem {
   quantity: number
   unit: string
   min_quantity: number
+  max_quantity?: number
   status: 'in_stock' | 'low_stock' | 'out_of_stock'
   cost_per_unit?: number
   supplier?: string
+  expiry_date?: string
   last_restocked?: string
   created_at: string
   updated_at: string
@@ -24,7 +25,35 @@ export interface MenuItemIngredient {
   inventory_item_id: string
   quantity_needed: number
   unit: string
+  is_optional: boolean
   created_at: string
+  updated_at: string
+}
+
+export interface InventoryTransaction {
+  id: string
+  inventory_item_id: string
+  transaction_type: 'restock' | 'usage' | 'waste' | 'adjustment'
+  quantity_change: number
+  quantity_before: number
+  quantity_after: number
+  reference_type?: string
+  reference_id?: string
+  notes?: string
+  created_by?: string
+  created_at: string
+}
+
+export interface InventoryAlert {
+  id: string
+  cafeteria_id: string
+  inventory_item_id: string
+  alert_type: 'low_stock' | 'out_of_stock' | 'expired' | 'expiring_soon'
+  message: string
+  is_resolved: boolean
+  resolved_at?: string
+  created_at: string
+  inventory_item?: InventoryItem
 }
 
 export interface StockAlert {

@@ -54,6 +54,7 @@ export const getMenuItemsByCategory = async (cafeteriaId?: string) => {
 
 export async function addMenuItem(formData: FormData | any) {
   try {
+    console.log("addMenuItem called with:", formData)
     let menuItemData: CompleteMenuItem
 
     if (formData instanceof FormData) {
@@ -126,6 +127,11 @@ export async function addMenuItem(formData: FormData | any) {
       }
     } else {
       // Handle object format with comprehensive field mapping
+      console.log("Processing object format data:", formData)
+      console.log("Ingredients from formData:", formData.ingredients)
+      console.log("Allergens from formData:", formData.allergens)
+      console.log("Nutrition info from formData:", formData.nutrition_info || formData.nutritionalInfo)
+
       menuItemData = {
         cafeteria_id: formData.cafeteria_id || formData.cafeteriaId,
         name: formData.name,
@@ -142,6 +148,8 @@ export async function addMenuItem(formData: FormData | any) {
         customization_options: formData.customization_options || formData.customizationOptions || [],
         preparation_time: formData.preparation_time || formData.preparationTime || 15
       }
+
+      console.log("Final menuItemData:", menuItemData)
     }
 
     // Validate the menu item
@@ -167,6 +175,7 @@ export async function addMenuItem(formData: FormData | any) {
 // Update menu item function
 export async function updateMenuItem(data: FormData | any) {
   try {
+    console.log("updateMenuItem called with:", data)
     let id: string
     let updates: Partial<CompleteMenuItem> = {}
 
@@ -238,6 +247,7 @@ export async function updateMenuItem(data: FormData | any) {
       }
     } else {
       // Handle object format
+      console.log("Processing object format update data:", data)
       id = data.id
 
       if (data.name !== undefined) updates.name = data.name
@@ -261,6 +271,11 @@ export async function updateMenuItem(data: FormData | any) {
       }
 
       // Handle complex fields
+      console.log("Processing complex fields:")
+      console.log("- nutrition_info:", data.nutrition_info || data.nutritionalInfo)
+      console.log("- ingredients:", data.ingredients)
+      console.log("- allergens:", data.allergens)
+
       if (data.nutrition_info !== undefined || data.nutritionalInfo !== undefined) {
         updates.nutrition_info = data.nutrition_info || data.nutritionalInfo
       }
@@ -269,6 +284,8 @@ export async function updateMenuItem(data: FormData | any) {
       if (data.customization_options !== undefined || data.customizationOptions !== undefined) {
         updates.customization_options = data.customization_options || data.customizationOptions
       }
+
+      console.log("Final updates object:", updates)
     }
 
     // Use the comprehensive service to update the item

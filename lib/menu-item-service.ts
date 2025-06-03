@@ -69,11 +69,26 @@ export class MenuItemService {
         total_ratings: menuItem.total_ratings || 0
       }
 
+      console.log("Final itemData for Supabase:", itemData)
+
+      // Ensure arrays are properly formatted
+      if (itemData.ingredients && Array.isArray(itemData.ingredients)) {
+        console.log("Ingredients array:", itemData.ingredients)
+      }
+      if (itemData.allergens && Array.isArray(itemData.allergens)) {
+        console.log("Allergens array:", itemData.allergens)
+      }
+      if (itemData.nutrition_info) {
+        console.log("Nutrition info object:", itemData.nutrition_info)
+      }
+
       const { data, error } = await supabase
         .from('menu_items')
         .insert([itemData])
         .select()
         .single()
+
+      console.log("Supabase insert result:", { data, error })
 
       if (error) {
         console.error('Error creating menu item:', error)
@@ -90,6 +105,8 @@ export class MenuItemService {
   // Update a menu item with all fields
   static async updateMenuItem(id: string, updates: Partial<CompleteMenuItem>): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
+      console.log("MenuItemService.updateMenuItem called with:", { id, updates })
+
       const updateData: any = {}
 
       // Basic Info
@@ -113,12 +130,27 @@ export class MenuItemService {
       // Additional fields
       if (updates.preparation_time !== undefined) updateData.preparation_time = updates.preparation_time
 
+      console.log("Final updateData for Supabase:", updateData)
+
+      // Ensure arrays are properly formatted
+      if (updateData.ingredients && Array.isArray(updateData.ingredients)) {
+        console.log("Ingredients array:", updateData.ingredients)
+      }
+      if (updateData.allergens && Array.isArray(updateData.allergens)) {
+        console.log("Allergens array:", updateData.allergens)
+      }
+      if (updateData.nutrition_info) {
+        console.log("Nutrition info object:", updateData.nutrition_info)
+      }
+
       const { data, error } = await supabase
         .from('menu_items')
         .update(updateData)
         .eq('id', id)
         .select()
         .single()
+
+      console.log("Supabase update result:", { data, error })
 
       if (error) {
         console.error('Error updating menu item:', error)

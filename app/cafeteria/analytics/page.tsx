@@ -38,6 +38,7 @@ import { supabase } from "@/lib/supabase"
 import { CHART_COLORS, PIE_CHART_COLORS, BAR_CHART_COLORS, useChartColors } from "@/lib/chart-colors"
 import { format } from "date-fns"
 import { useUser } from "@/hooks/use-user"
+import { UnifiedChartService } from "@/lib/unified-chart-service"
 
 export default function CafeteriaAnalyticsPage() {
   // Get theme-aware colors
@@ -228,19 +229,31 @@ export default function CafeteriaAnalyticsPage() {
         setLabels(newLabels)
 
         // Calculate popular menu items
+        console.log('Analytics Debug - Processing orders:', orders.length)
+        console.log('Analytics Debug - Menu items map:', Object.keys(menuItemsMap).length)
+
         const itemCounts: Record<string, number> = {}
         orders.forEach(order => {
+          console.log('Analytics Debug - Order:', order.id, 'Items:', order.order_items?.length)
           order.order_items?.forEach((item: any) => {
+            console.log('Analytics Debug - Item:', item.item_id, 'Quantity:', item.quantity)
             if (item.item_id && menuItemsMap[item.item_id]) {
               const itemName = menuItemsMap[item.item_id].name
               itemCounts[itemName] = (itemCounts[itemName] || 0) + item.quantity
+              console.log('Analytics Debug - Added to counts:', itemName, itemCounts[itemName])
+            } else {
+              console.log('Analytics Debug - Item not found in menu map:', item.item_id)
             }
           })
         })
 
+        console.log('Analytics Debug - Final item counts:', itemCounts)
+
         const sortedItems = Object.entries(itemCounts)
           .sort(([,a], [,b]) => b - a)
           .slice(0, 5)
+
+        console.log('Analytics Debug - Sorted items:', sortedItems)
 
         setPopularItemsLabels(sortedItems.map(([name]) => name))
         setPopularItemsData(sortedItems.map(([,count]) => count))

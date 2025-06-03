@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/use-toast"
 import { getOrders, updateOrderStatus as updateOrderStatusAPI } from "@/app/actions/orders"
 import { getCurrentUser, getCafeterias } from "@/lib/supabase"
 import { useEffect } from "react"
+import { OptimizedOrdersService, OptimizedOrder } from "@/lib/optimized-orders-service"
 
 // Mock data for different order statuses
 const newOrders = [
@@ -129,9 +130,24 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [sortField, setSortField] = useState<'created_at' | 'pickup_time' | 'total_amount' | 'status'>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [cafeteriaId, setCafeteriaId] = useState<string>("")
+  const [orderCounts, setOrderCounts] = useState({
+    new: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0,
+    cancelled: 0,
+    total: 0
+  })
 
-  // State to track orders
-  const [orders, setOrders] = useState({
+  // State to track orders (optimized)
+  const [orders, setOrders] = useState<{
+    new: OptimizedOrder[]
+    preparing: OptimizedOrder[]
+    ready: OptimizedOrder[]
+    completed: OptimizedOrder[]
+    cancelled: OptimizedOrder[]
+  }>({
     new: [],
     preparing: [],
     ready: [],
@@ -186,12 +202,12 @@ export default function OrdersPage() {
     }
   }
 
-  // Load orders from Supabase
+  // Optimized order loading
   useEffect(() => {
-    const loadOrders = async () => {
+    const initializeOrders = async () => {
       try {
         setLoading(true)
-        console.log('Loading orders from Supabase...')
+        console.log('Initializing optimized orders...')
 
         // Get current user and their cafeteria
         const user = await getCurrentUser()
@@ -218,48 +234,75 @@ export default function OrdersPage() {
           return
         }
 
-        // Get orders filtered by cafeteria ID
-        const allOrders = await getOrders(undefined, userCafeteria.id)
-        console.log('Fetched orders for cafeteria:', userCafeteria.name, 'Count:', allOrders.length)
+        setCafeteriaId(userCafeteria.id)
+        await loadOrdersOptimized(userCafeteria.id)
 
-        // Transform and group orders by status
-        const transformedOrders = allOrders.map(transformOrder)
+        // Set up real-time subscription
+        const subscription = OptimizedOrdersService.subscribeToOrderUpdates(
+          userCafeteria.id,
+          () => {
+            console.log('Real-time update received, reloading orders...')
+            loadOrdersOptimized(userCafeteria.id)
+          }
+        )
 
-        const groupedOrders = {
-          new: transformedOrders.filter(order => order.status === 'new'),
-          preparing: transformedOrders.filter(order => order.status === 'preparing'),
-          ready: transformedOrders.filter(order => order.status === 'ready'),
-          completed: transformedOrders.filter(order => order.status === 'completed'),
-          cancelled: transformedOrders.filter(order => order.status === 'cancelled'),
+        return () => {
+          subscription.unsubscribe()
         }
-
-        console.log('Grouped orders:', {
-          new: groupedOrders.new.length,
-          preparing: groupedOrders.preparing.length,
-          ready: groupedOrders.ready.length,
-          completed: groupedOrders.completed.length,
-          cancelled: groupedOrders.cancelled.length,
-        })
-
-        setOrders(groupedOrders)
       } catch (error) {
-        console.error('Error loading orders:', error)
+        console.error('Error initializing orders:', error)
         toast({
           title: "Error",
-          description: "Failed to load orders. Please try again.",
+          description: "Failed to initialize orders. Please try again.",
           variant: "destructive",
         })
-      } finally {
         setLoading(false)
       }
     }
 
-    loadOrders()
-
-    // Set up real-time updates - refresh every 30 seconds
-    const interval = setInterval(loadOrders, 30000)
-    return () => clearInterval(interval)
+    initializeOrders()
   }, [])
+
+  // Load orders using optimized service
+  const loadOrdersOptimized = async (cafeteriaId: string) => {
+    try {
+      console.log('Loading orders with optimized service...')
+      const startTime = Date.now()
+
+      // Load orders for each status in parallel
+      const [newOrders, preparingOrders, readyOrders, completedOrders, cancelledOrders, counts] = await Promise.all([
+        OptimizedOrdersService.getOrdersList(cafeteriaId, 'new', 20),
+        OptimizedOrdersService.getOrdersList(cafeteriaId, 'preparing', 20),
+        OptimizedOrdersService.getOrdersList(cafeteriaId, 'ready', 20),
+        OptimizedOrdersService.getOrdersList(cafeteriaId, 'completed', 50),
+        OptimizedOrdersService.getOrdersList(cafeteriaId, 'cancelled', 20),
+        OptimizedOrdersService.getOrdersCounts(cafeteriaId)
+      ])
+
+      const loadTime = Date.now() - startTime
+      console.log(`Orders loaded in ${loadTime}ms`)
+
+      setOrders({
+        new: newOrders.orders,
+        preparing: preparingOrders.orders,
+        ready: readyOrders.orders,
+        completed: completedOrders.orders,
+        cancelled: cancelledOrders.orders,
+      })
+
+      setOrderCounts(counts)
+      setLoading(false)
+
+    } catch (error) {
+      console.error('Error loading optimized orders:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load orders. Please try again.",
+        variant: "destructive",
+      })
+      setLoading(false)
+    }
+  }
 
   // Update the updateOrderStatus function to properly handle order status changes
 
@@ -271,31 +314,13 @@ export default function OrdersPage() {
         description: `Changing order ${orderId} status to ${newStatus}...`,
       })
 
-      // Update order status in Supabase
-      const result = await updateOrderStatusAPI(orderId, newStatus)
+      // Update order status using optimized service
+      const result = await OptimizedOrdersService.updateOrderStatus(orderId, newStatus)
 
       if (result.success) {
-        // Get current user and their cafeteria for reload
-        const user = await getCurrentUser()
-        const cafeterias = await getCafeterias()
-        const userCafeteria = cafeterias.find(c => c.owner_id === user?.id) || cafeterias[0]
-
-        if (userCafeteria) {
-          // Reload orders filtered by cafeteria ID
-          const allOrders = await getOrders(undefined, userCafeteria.id)
-
-          // Transform and group orders by status
-          const transformedOrders = allOrders.map(transformOrder)
-
-          const groupedOrders = {
-            new: transformedOrders.filter(order => order.status === 'new'),
-            preparing: transformedOrders.filter(order => order.status === 'preparing'),
-            ready: transformedOrders.filter(order => order.status === 'ready'),
-            completed: transformedOrders.filter(order => order.status === 'completed'),
-            cancelled: transformedOrders.filter(order => order.status === 'cancelled'),
-          }
-
-          setOrders(groupedOrders)
+        // Reload orders quickly
+        if (cafeteriaId) {
+          await loadOrdersOptimized(cafeteriaId)
         }
 
         toast({
@@ -326,16 +351,16 @@ export default function OrdersPage() {
 
       switch (sortField) {
         case 'created_at':
-          aValue = new Date(a.time).getTime()
-          bValue = new Date(b.time).getTime()
+          aValue = new Date(a.created_at).getTime()
+          bValue = new Date(b.created_at).getTime()
           break
         case 'pickup_time':
           aValue = a.pickup_time ? new Date(a.pickup_time).getTime() : 0
           bValue = b.pickup_time ? new Date(b.pickup_time).getTime() : 0
           break
         case 'total_amount':
-          aValue = parseFloat(a.total.replace(' EGP', ''))
-          bValue = parseFloat(b.total.replace(' EGP', ''))
+          aValue = a.total_amount
+          bValue = b.total_amount
           break
         case 'status':
           aValue = a.status
@@ -354,14 +379,14 @@ export default function OrdersPage() {
   }
 
   // Filter orders based on search query
-  const filterOrders = (ordersList: any[]) => {
+  const filterOrders = (ordersList: OptimizedOrder[]) => {
     if (!searchQuery) return ordersList
 
     return ordersList.filter(
       (order) =>
         order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.items.some((item: string) => item.toLowerCase().includes(searchQuery.toLowerCase())),
+        order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.items_summary.toLowerCase().includes(searchQuery.toLowerCase()),
     )
   }
 
@@ -437,20 +462,20 @@ export default function OrdersPage() {
               sortedOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
-                  <TableCell>{order.customer}</TableCell>
-                  <TableCell>{order.items.join(", ")}</TableCell>
-                  <TableCell>{order.total}</TableCell>
+                  <TableCell>{order.customer_name}</TableCell>
+                  <TableCell>{order.items_summary}</TableCell>
+                  <TableCell>{order.total_amount.toFixed(2)} EGP</TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <Clock className="mr-1 h-4 w-4 text-gray-400" />
-                      <span>{timeSince(order.time)}</span>
+                      <span>{timeSince(order.created_at)}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <Clock className="mr-1 h-4 w-4 text-blue-500" />
                       <span className="font-medium text-blue-600">
-                        {order.pickup_time_formatted}
+                        {order.pickup_time ? formatDate(order.pickup_time) : 'ASAP'}
                       </span>
                     </div>
                   </TableCell>
