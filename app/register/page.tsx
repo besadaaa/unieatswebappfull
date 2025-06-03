@@ -215,7 +215,7 @@ export default function RegisterPage() {
                     <Input
                       id="ownerFirstName"
                       placeholder="Your first name"
-                      className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm`}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern h-10 text-sm transition-all duration-300"
                       value={formData.ownerFirstName}
                       onChange={handleChange}
                       required
@@ -228,7 +228,7 @@ export default function RegisterPage() {
                     <Input
                       id="ownerLastName"
                       placeholder="Your last name"
-                      className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm`}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern h-10 text-sm transition-all duration-300"
                       value={formData.ownerLastName}
                       onChange={handleChange}
                       required
@@ -242,7 +242,7 @@ export default function RegisterPage() {
                       id="email"
                       type="email"
                       placeholder="Your email"
-                      className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm`}
+                      className="glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern h-10 text-sm transition-all duration-300"
                       value={formData.email}
                       onChange={handleChange}
                       required
@@ -256,7 +256,7 @@ export default function RegisterPage() {
                       id="phone"
                       type="tel"
                       placeholder="Your phone"
-                      className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm`}
+                      className="glass-effect border-white/20 hover:border-cyan-500/50 focus:border-cyan-500/50 btn-modern h-10 text-sm transition-all duration-300"
                       value={formData.phone}
                       onChange={handleChange}
                       required
@@ -271,7 +271,7 @@ export default function RegisterPage() {
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Create password"
-                        className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm pr-8`}
+                        className="glass-effect border-white/20 hover:border-rose-500/50 focus:border-rose-500/50 btn-modern h-10 text-sm pr-10 transition-all duration-300"
                         value={formData.password}
                         onChange={handleChange}
                         required
@@ -296,7 +296,7 @@ export default function RegisterPage() {
                       id="confirmPassword"
                       type="password"
                       placeholder="Confirm password"
-                      className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm`}
+                      className="glass-effect border-white/20 hover:border-rose-500/50 focus:border-rose-500/50 btn-modern h-10 text-sm transition-all duration-300"
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       required
@@ -309,7 +309,7 @@ export default function RegisterPage() {
                     <Input
                       id="cafeteriaDescription"
                       placeholder="Briefly describe your cafeteria"
-                      className={`${isDark ? "bg-[#0f1424] border-gray-700" : "bg-white"} h-8 text-sm`}
+                      className="glass-effect border-white/20 hover:border-indigo-500/50 focus:border-indigo-500/50 btn-modern h-10 text-sm transition-all duration-300"
                       value={formData.cafeteriaDescription}
                       onChange={handleChange}
                       required
@@ -331,18 +331,18 @@ export default function RegisterPage() {
                     >
                       I agree to the terms and conditions
                     </label>
-                    <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    <p className="text-xs text-slate-400">
                       By creating an account, you agree to our{" "}
                       <a
                         href="#"
-                        className={isDark ? "text-yellow-500 hover:underline" : "text-yellow-500 hover:underline"}
+                        className="text-amber-400 hover:text-amber-300 hover:underline transition-colors duration-300"
                       >
                         Terms of Service
                       </a>{" "}
                       and{" "}
                       <a
                         href="#"
-                        className={isDark ? "text-yellow-500 hover:underline" : "text-yellow-500 hover:underline"}
+                        className="text-amber-400 hover:text-amber-300 hover:underline transition-colors duration-300"
                       >
                         Privacy Policy
                       </a>
@@ -352,11 +352,11 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="flex justify-between items-center mt-3">
-                  <div className="text-xs">
+                  <div className="text-xs text-slate-300">
                     Already have an account?{" "}
                     <a
                       href="/"
-                      className={isDark ? "text-yellow-500 hover:underline" : "text-yellow-500 hover:underline"}
+                      className="text-emerald-400 hover:text-emerald-300 hover:underline transition-colors duration-300"
                     >
                       Sign in
                     </a>

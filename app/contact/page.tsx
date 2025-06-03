@@ -162,7 +162,7 @@ export default function ContactPage() {
                           id="email"
                           type="email"
                           placeholder="Your email"
-                          className={isDark ? "bg-[#1a1f36] border-0 h-8 text-sm" : "bg-white h-8 text-sm"}
+                          className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern h-10 text-sm transition-all duration-300"
                           value={formData.email}
                           onChange={handleChange}
                           required
@@ -177,7 +177,7 @@ export default function ContactPage() {
                       <Input
                         id="subject"
                         placeholder="How can we help?"
-                        className={isDark ? "bg-[#1a1f36] border-0 h-8 text-sm" : "bg-white h-8 text-sm"}
+                        className="glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern h-10 text-sm transition-all duration-300"
                         value={formData.subject}
                         onChange={handleChange}
                         required
@@ -191,7 +191,7 @@ export default function ContactPage() {
                       <Textarea
                         id="message"
                         placeholder="Your message"
-                        className={isDark ? "bg-[#1a1f36] border-0 h-20 text-sm" : "bg-white h-20 text-sm"}
+                        className="glass-effect border-white/20 hover:border-cyan-500/50 focus:border-cyan-500/50 btn-modern min-h-[80px] text-sm transition-all duration-300"
                         value={formData.message}
                         onChange={handleChange}
                         required
@@ -209,68 +209,62 @@ export default function ContactPage() {
                   </form>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className={`p-3 rounded-lg ${isDark ? "bg-[#0f1424]" : "bg-gray-50 border"}`}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg glass-effect border border-white/10 hover-lift">
                       <div className="flex items-start">
-                        <div
-                          className={`w-8 h-8 rounded-full ${isDark ? "bg-yellow-500/20 text-yellow-500" : "bg-yellow-500/20 text-yellow-500"} flex items-center justify-center mr-2`}
-                        >
-                          <Mail size={16} />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 flex items-center justify-center mr-3">
+                          <Mail size={18} />
                         </div>
                         <div>
-                          <h4 className="font-medium text-sm">Email</h4>
-                          <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                          <h4 className="font-medium text-sm text-white mb-1">Email</h4>
+                          <p className="text-xs text-slate-300">
                             {systemSettings.support_email || "support@unieats.com"}
                           </p>
-                          <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>info@unieats.com</p>
+                          <p className="text-xs text-slate-300">info@unieats.com</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className={`p-3 rounded-lg ${isDark ? "bg-[#0f1424]" : "bg-gray-50 border"}`}>
+                    <div className="p-4 rounded-lg glass-effect border border-white/10 hover-lift">
                       <div className="flex items-start">
-                        <div
-                          className={`w-8 h-8 rounded-full ${isDark ? "bg-yellow-500/20 text-yellow-500" : "bg-yellow-500/20 text-yellow-500"} flex items-center justify-center mr-2`}
-                        >
-                          <Phone size={16} />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 flex items-center justify-center mr-3">
+                          <Phone size={18} />
                         </div>
                         <div>
-                          <h4 className="font-medium text-sm">Phone</h4>
-                          <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                          <h4 className="font-medium text-sm text-white mb-1">Phone</h4>
+                          <p className="text-xs text-slate-300">
                             {systemSettings.company_phone || "+20 123 456 7890"}
                           </p>
-                          <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>+20 098 765 4321</p>
+                          <p className="text-xs text-slate-300">+20 098 765 4321</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`p-3 rounded-lg ${isDark ? "bg-[#0f1424]" : "bg-gray-50 border"}`}>
+                  <div className="p-4 rounded-lg glass-effect border border-white/10 hover-lift">
                     <div className="flex items-start">
-                      <div
-                        className={`w-8 h-8 rounded-full ${isDark ? "bg-yellow-500/20 text-yellow-500" : "bg-yellow-500/20 text-yellow-500"} flex items-center justify-center mr-2`}
-                      >
-                        <MapPin size={16} />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-violet-500/20 text-purple-400 flex items-center justify-center mr-3">
+                        <MapPin size={18} />
                       </div>
                       <div>
-                        <h4 className="font-medium text-sm">Office</h4>
-                        <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                        <h4 className="font-medium text-sm text-white mb-1">Office</h4>
+                        <p className="text-xs text-slate-300">
                           {systemSettings.company_address || "123 University Avenue, Cairo, Egypt 12345"}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`p-3 rounded-lg ${isDark ? "bg-[#0f1424]" : "bg-gray-50 border"}`}>
-                    <h4 className="font-medium text-sm mb-1">Office Hours</h4>
-                    <div className="grid grid-cols-2 gap-1 text-xs">
-                      <div>Monday - Friday</div>
-                      <div>9:00 AM - 6:00 PM</div>
-                      <div>Saturday</div>
-                      <div>10:00 AM - 4:00 PM</div>
-                      <div>Sunday</div>
-                      <div>Closed</div>
+                  <div className="p-4 rounded-lg glass-effect border border-white/10 hover-lift">
+                    <h4 className="font-medium text-sm text-white mb-3">Office Hours</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="text-slate-300">Monday - Friday</div>
+                      <div className="text-slate-400">9:00 AM - 6:00 PM</div>
+                      <div className="text-slate-300">Saturday</div>
+                      <div className="text-slate-400">10:00 AM - 4:00 PM</div>
+                      <div className="text-slate-300">Sunday</div>
+                      <div className="text-slate-400">Closed</div>
                     </div>
                   </div>
 

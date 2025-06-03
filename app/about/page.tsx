@@ -164,40 +164,35 @@ export default function AboutPage() {
           </TabsContent>
 
           <TabsContent value="values" className="flex-1 flex items-center justify-center">
-            <Card className={`w-full max-w-3xl ${isDark ? "bg-[#1a1f36] border-0" : ""}`}>
-              <CardContent className="p-4">
-                <h3 className="text-lg font-bold mb-3">Our Core Values</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-2 rounded-lg border">
-                    <div
-                      className={`w-8 h-8 rounded-full mx-auto ${isDark ? "bg-yellow-500/20 text-yellow-500" : "bg-yellow-500/20 text-yellow-500"} flex items-center justify-center mb-1`}
-                    >
+            <Card className="w-full max-w-3xl modern-card glass-effect hover-lift">
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-full blur-2xl"></div>
+                <h3 className="text-xl font-bold mb-6 gradient-text">Our Core Values</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 rounded-lg glass-effect border border-white/10">
+                    <div className="w-12 h-12 rounded-full mx-auto bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 flex items-center justify-center mb-3 text-lg font-bold">
                       1
                     </div>
-                    <h4 className="font-bold text-sm">Efficiency</h4>
-                    <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                    <h4 className="font-bold text-base mb-2 text-white">Efficiency</h4>
+                    <p className="text-sm text-slate-300">
                       We create systems that save time and reduce waste.
                     </p>
                   </div>
-                  <div className="text-center p-2 rounded-lg border">
-                    <div
-                      className={`w-8 h-8 rounded-full mx-auto ${isDark ? "bg-yellow-500/20 text-yellow-500" : "bg-yellow-500/20 text-yellow-500"} flex items-center justify-center mb-1`}
-                    >
+                  <div className="text-center p-4 rounded-lg glass-effect border border-white/10">
+                    <div className="w-12 h-12 rounded-full mx-auto bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 flex items-center justify-center mb-3 text-lg font-bold">
                       2
                     </div>
-                    <h4 className="font-bold text-sm">Accessibility</h4>
-                    <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                    <h4 className="font-bold text-base mb-2 text-white">Accessibility</h4>
+                    <p className="text-sm text-slate-300">
                       Food services should be accessible to everyone.
                     </p>
                   </div>
-                  <div className="text-center p-2 rounded-lg border">
-                    <div
-                      className={`w-8 h-8 rounded-full mx-auto ${isDark ? "bg-yellow-500/20 text-yellow-500" : "bg-yellow-500/20 text-yellow-500"} flex items-center justify-center mb-1`}
-                    >
+                  <div className="text-center p-4 rounded-lg glass-effect border border-white/10">
+                    <div className="w-12 h-12 rounded-full mx-auto bg-gradient-to-br from-purple-500/20 to-violet-500/20 text-purple-400 flex items-center justify-center mb-3 text-lg font-bold">
                       3
                     </div>
-                    <h4 className="font-bold text-sm">Innovation</h4>
-                    <p className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                    <h4 className="font-bold text-base mb-2 text-white">Innovation</h4>
+                    <p className="text-sm text-slate-300">
                       We continuously improve with cutting-edge technology.
                     </p>
                   </div>
@@ -207,20 +202,20 @@ export default function AboutPage() {
           </TabsContent>
 
           <TabsContent value="team" className="flex-1 flex items-center justify-center">
-            <Card
-              className={`w-full max-w-3xl ${isDark ? "bg-[#1a1f36] border-0 overflow-hidden" : "overflow-hidden"}`}
-            >
-              <div className="h-40 bg-yellow-500/20">
+            <Card className="w-full max-w-3xl modern-card glass-effect hover-lift overflow-hidden">
+              <div className="h-48 bg-gradient-to-br from-purple-500/20 to-violet-500/20 relative">
                 <img
                   src="/diverse-group-city.png"
                   alt="The UniEats Team"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover opacity-80"
                   style={{ width: 'auto', height: 'auto' }}
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
               </div>
-              <CardContent className="p-4">
-                <h3 className="text-lg font-bold mb-2">Our Team</h3>
-                <p className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-full blur-2xl"></div>
+                <h3 className="text-xl font-bold mb-4 gradient-text">Our Team</h3>
+                <p className="text-sm text-slate-300 leading-relaxed">
                   UniEats was founded by a group of university students who experienced firsthand the challenges of
                   campus dining. Today, our team consists of developers, designers, and food service experts dedicated
                   to improving the campus dining experience.
@@ -230,21 +225,22 @@ export default function AboutPage() {
           </TabsContent>
 
           <TabsContent value="impact" className="flex-1 flex items-center justify-center">
-            <Card className={`w-full max-w-3xl ${isDark ? "bg-[#1a1f36] border-0" : ""}`}>
-              <CardContent className="p-4">
-                <h3 className="text-lg font-bold mb-3">Our Impact</h3>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className={`text-3xl font-bold ${isDark ? "text-yellow-500" : "text-yellow-500"}`}>25+</div>
-                    <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Campuses</div>
+            <Card className="w-full max-w-3xl modern-card glass-effect hover-lift">
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-full blur-2xl"></div>
+                <h3 className="text-xl font-bold mb-6 gradient-text">Our Impact</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                  <div className="p-4 rounded-lg glass-effect border border-white/10">
+                    <div className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-2">25+</div>
+                    <div className="text-sm text-slate-300 font-medium">Campuses</div>
                   </div>
-                  <div>
-                    <div className={`text-3xl font-bold ${isDark ? "text-yellow-500" : "text-yellow-500"}`}>100+</div>
-                    <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Cafeterias</div>
+                  <div className="p-4 rounded-lg glass-effect border border-white/10">
+                    <div className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-2">100+</div>
+                    <div className="text-sm text-slate-300 font-medium">Cafeterias</div>
                   </div>
-                  <div>
-                    <div className={`text-3xl font-bold ${isDark ? "text-yellow-500" : "text-yellow-500"}`}>50K+</div>
-                    <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Daily Orders</div>
+                  <div className="p-4 rounded-lg glass-effect border border-white/10">
+                    <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-violet-400 bg-clip-text text-transparent mb-2">50K+</div>
+                    <div className="text-sm text-slate-300 font-medium">Daily Orders</div>
                   </div>
                 </div>
               </CardContent>
@@ -254,43 +250,33 @@ export default function AboutPage() {
 
         {/* Careers Modal */}
         {showCareers && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div
-              className={
-                isDark
-                  ? "bg-[#1a1f36] rounded-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto"
-                  : "bg-white rounded-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto shadow-xl"
-              }
-            >
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-900/95 border border-white/20 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto glass-effect">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Open Positions</h2>
-                  <Button variant="ghost" onClick={() => setShowCareers(false)}>
+                  <h2 className="text-2xl font-bold gradient-text">Open Positions</h2>
+                  <Button variant="ghost" onClick={() => setShowCareers(false)} className="hover:bg-white/10">
                     ✕
                   </Button>
                 </div>
 
                 <div className="space-y-6">
                   {mockCareers.map((career) => (
-                    <Card key={career.id} className={isDark ? "bg-[#0f1424] border-0" : ""}>
+                    <Card key={career.id} className="modern-card glass-effect border border-white/10">
                       <CardContent className="p-6">
-                        <h3 className="text-xl font-bold mb-1">{career.title}</h3>
-                        <div className={`flex items-center text-sm ${isDark ? "text-gray-400" : "text-gray-500"} mb-4`}>
+                        <h3 className="text-xl font-bold mb-2 text-white">{career.title}</h3>
+                        <div className="flex items-center text-sm text-slate-400 mb-4">
                           <span>{career.department}</span>
                           <span className="mx-2">•</span>
                           <span>{career.location}</span>
                         </div>
-                        <p className="mb-4">{career.description}</p>
+                        <p className="mb-4 text-slate-300">{career.description}</p>
                         <div className="mb-4">
-                          <strong className="block mb-2">Requirements:</strong>
-                          <p className={isDark ? "text-gray-300" : "text-gray-600"}>{career.requirements}</p>
+                          <strong className="block mb-2 text-white">Requirements:</strong>
+                          <p className="text-slate-300">{career.requirements}</p>
                         </div>
                         <Button
-                          className={
-                            isDark
-                              ? "bg-yellow-500 hover:bg-yellow-600 text-black"
-                              : "bg-yellow-500 hover:bg-yellow-600 text-black"
-                          }
+                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white btn-modern"
                           onClick={() => {
                             toast({
                               title: "Application Started",
