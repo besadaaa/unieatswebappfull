@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Send } from "lucide-react"
 import { getCurrentUser } from "@/lib/supabase"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
 interface Message {
   id: string
@@ -305,6 +306,11 @@ export default function CafeteriaSupport() {
 
   return (
     <div className="p-6">
+      <CafeteriaPageHeader
+        title="Support"
+        subtitle="Get help and submit support tickets"
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Ticket List */}
         <div className="md:col-span-1">

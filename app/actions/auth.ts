@@ -148,23 +148,27 @@ export async function signUp(formData: FormData) {
           id: data.user.id,
           role: role,
           full_name: fullName,
+          email: email,
+          status: 'active'
         }
       ])
 
     if (profileError) {
       console.error('Profile creation error:', profileError)
-      return { success: false, message: "Failed to create user profile" }
+      return { success: false, message: `Profile creation failed: ${profileError.message}` }
     }
 
     return {
       success: true,
-      message: "Registration successful! Please check your email to verify your account.",
+      message: "Account created successfully! You can now sign in.",
     }
   } catch (error) {
     console.error('Sign up error:', error)
     return { success: false, message: "An unexpected error occurred" }
   }
 }
+
+
 
 export async function getCurrentUserSession() {
   try {

@@ -97,33 +97,51 @@ export class DashboardService {
       const { startDate, endDate } = this.getTimeRange(timeRange)
       const today = new Date().toISOString().split('T')[0]
 
+      console.log('Fetching dashboard metrics for cafeteria:', cafeteriaId, 'Time range:', timeRange)
+      console.log('Date range:', { startDate, endDate, today })
+
       // Get today's orders
       const { data: todayOrders, error: todayOrdersError } = await supabase
         .from('orders')
-        .select('id, total_amount, user_id')
+        .select('id, total_amount, admin_revenue, user_id, status')
         .eq('cafeteria_id', cafeteriaId)
         .gte('created_at', today + 'T00:00:00')
         .lt('created_at', today + 'T23:59:59')
 
-      if (todayOrdersError) throw todayOrdersError
+      if (todayOrdersError) {
+        console.error('Error fetching today orders:', todayOrdersError)
+        throw todayOrdersError
+      }
+
+      console.log('Today orders fetched:', todayOrders?.length || 0)
 
       // Get total menu items
       const { data: menuItems, error: menuError } = await supabase
         .from('menu_items')
-        .select('id')
+        .select('id, name, price')
         .eq('cafeteria_id', cafeteriaId)
 
-      if (menuError) throw menuError
+      if (menuError) {
+        console.error('Error fetching menu items:', menuError)
+        throw menuError
+      }
+
+      console.log('Menu items fetched:', menuItems?.length || 0)
 
       // Get orders in time range
       const { data: rangeOrders, error: rangeError } = await supabase
         .from('orders')
-        .select('id, total_amount, user_id, created_at')
+        .select('id, total_amount, admin_revenue, user_id, created_at, status')
         .eq('cafeteria_id', cafeteriaId)
         .gte('created_at', startDate)
         .lt('created_at', endDate)
 
-      if (rangeError) throw rangeError
+      if (rangeError) {
+        console.error('Error fetching range orders:', rangeError)
+        throw rangeError
+      }
+
+      console.log('Range orders fetched:', rangeOrders?.length || 0)
 
       // Get top selling items
       const { data: topItems, error: topItemsError } = await supabase
@@ -139,13 +157,35 @@ export class DashboardService {
 
       if (topItemsError) throw topItemsError
 
-      // Calculate metrics
-      const todayRevenue = todayOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
+      // Calculate metrics - Cafeteria revenue is total_amount minus admin_revenue (platform's cut)
+      const todayRevenue = todayOrders?.reduce((sum, order) => {
+        const totalAmount = parseFloat(order.total_amount) || 0
+        const adminRevenue = parseFloat(order.admin_revenue) || 0
+        const cafeteriaRevenue = totalAmount - adminRevenue
+        return sum + cafeteriaRevenue
+      }, 0) || 0
+
       const todayCustomers = new Set(todayOrders?.map(order => order.user_id)).size || 0
-      
-      const totalRevenue = rangeOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
+
+      const totalRevenue = rangeOrders?.reduce((sum, order) => {
+        const totalAmount = parseFloat(order.total_amount) || 0
+        const adminRevenue = parseFloat(order.admin_revenue) || 0
+        const cafeteriaRevenue = totalAmount - adminRevenue
+        return sum + cafeteriaRevenue
+      }, 0) || 0
+
       const totalOrdersCount = rangeOrders?.length || 0
       const uniqueCustomers = new Set(rangeOrders?.map(order => order.user_id)).size || 0
+
+      console.log('Calculated metrics:', {
+        todayOrders: todayOrders?.length || 0,
+        todayRevenue,
+        todayCustomers,
+        totalOrders: totalOrdersCount,
+        totalRevenue,
+        uniqueCustomers,
+        menuItems: menuItems?.length || 0
+      })
 
       // Process top selling items
       const itemSales = new Map<string, { orders: number; revenue: number }>()
@@ -203,16 +243,24 @@ export class DashboardService {
     try {
       const { startDate, endDate } = this.getTimeRange(timeRange)
 
+      console.log('Fetching chart data for cafeteria:', cafeteriaId, 'Time range:', timeRange)
+      console.log('Chart date range:', { startDate, endDate })
+
       // Get orders data grouped by time period
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('created_at, total_amount, user_id')
+        .select('created_at, total_amount, admin_revenue, user_id')
         .eq('cafeteria_id', cafeteriaId)
         .gte('created_at', startDate)
         .lt('created_at', endDate)
         .order('created_at')
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching chart orders:', error)
+        throw error
+      }
+
+      console.log('Chart orders fetched:', orders?.length || 0)
 
       // Process data based on time range
       if (timeRange === 'Today' || timeRange === 'This Week') {
@@ -222,7 +270,11 @@ export class DashboardService {
         orders?.forEach(order => {
           const date = order.created_at.split('T')[0]
           const existing = dailyData.get(date) || { revenue: 0, orders: 0, customers: new Set() }
-          existing.revenue += order.total_amount || 0
+          // Calculate cafeteria revenue (total_amount - admin_revenue)
+          const totalAmount = parseFloat(order.total_amount) || 0
+          const adminRevenue = parseFloat(order.admin_revenue) || 0
+          const cafeteriaRevenue = totalAmount - adminRevenue
+          existing.revenue += cafeteriaRevenue
           existing.orders += 1
           existing.customers.add(order.user_id)
           dailyData.set(date, existing)
@@ -251,7 +303,11 @@ export class DashboardService {
           const date = new Date(order.created_at)
           const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
           const existing = monthlyData.get(monthKey) || { revenue: 0, orders: 0, customers: new Set() }
-          existing.revenue += order.total_amount || 0
+          // Calculate cafeteria revenue (total_amount - admin_revenue)
+          const totalAmount = parseFloat(order.total_amount) || 0
+          const adminRevenue = parseFloat(order.admin_revenue) || 0
+          const cafeteriaRevenue = totalAmount - adminRevenue
+          existing.revenue += cafeteriaRevenue
           existing.orders += 1
           existing.customers.add(order.user_id)
           monthlyData.set(monthKey, existing)
@@ -293,20 +349,51 @@ export class DashboardService {
   // Get current user's cafeteria ID
   static async getCurrentCafeteriaId(): Promise<string | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return null
+      console.log('🔍 Getting current cafeteria ID...')
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) {
+        console.error('❌ Auth error:', authError)
+        return null
+      }
+
+      if (!user) {
+        console.log('❌ No authenticated user found')
+        return null
+      }
+
+      console.log('✅ User authenticated:', user.id)
 
       const { data: cafeterias, error } = await supabase
         .from('cafeterias')
-        .select('id')
+        .select('id, name, owner_id')
         .eq('owner_id', user.id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error fetching cafeteria:', error)
 
+        // If no cafeteria found for this user, try to get any cafeteria for demo purposes
+        console.log('🔍 No cafeteria found for user, trying to get any available cafeteria...')
+        const { data: anyCafeteria, error: anyError } = await supabase
+          .from('cafeterias')
+          .select('id, name')
+          .limit(1)
+          .single()
+
+        if (anyError) {
+          console.error('❌ No cafeterias found at all:', anyError)
+          return null
+        }
+
+        console.log('✅ Using demo cafeteria:', anyCafeteria)
+        return anyCafeteria?.id || null
+      }
+
+      console.log('✅ Found cafeteria for user:', cafeterias)
       return cafeterias?.id || null
     } catch (error) {
-      console.error('Error getting cafeteria ID:', error)
+      console.error('❌ Error getting cafeteria ID:', error)
       return null
     }
   }

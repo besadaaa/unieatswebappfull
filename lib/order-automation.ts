@@ -38,16 +38,40 @@ export const processNewOrder = async (
   }
 ): Promise<OrderProcessingResult> => {
   try {
-    // 1. Create the order
+    // Calculate revenue breakdown
+    const subtotal = orderData.order_items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+
+    // Revenue calculations: 4% service fee (capped at 20), 10% commission
+    const userServiceFee = Math.min(subtotal * 0.04, 20.00)
+    const cafeteriaCommission = subtotal * 0.10
+    const adminRevenue = userServiceFee + cafeteriaCommission
+    const totalAmount = subtotal + userServiceFee
+
+    console.log('Order automation revenue calculation:', {
+      subtotal,
+      userServiceFee,
+      cafeteriaCommission,
+      adminRevenue,
+      totalAmount
+    })
+
+    // 1. Create the order with all revenue fields
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert([{
         user_id: orderData.user_id,
         cafeteria_id: orderData.cafeteria_id,
-        total_amount: orderData.total_amount,
+        student_id: orderData.user_id,
+        subtotal: subtotal,
+        user_service_fee: userServiceFee,
+        cafeteria_commission: cafeteriaCommission,
+        admin_revenue: adminRevenue,
+        total_amount: totalAmount,
         status: 'new',
         pickup_time: orderData.pickup_time,
-        student_id: orderData.user_id
+        platform: 'web',
+        service_fee_percentage: 4.0,
+        payment_method: 'card'
       }])
       .select()
       .single()

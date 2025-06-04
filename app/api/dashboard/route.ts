@@ -39,24 +39,48 @@ export async function GET(request: NextRequest) {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
     }
 
-    // Fetch all orders
+    // Fetch all orders (including all statuses for comprehensive data)
     let ordersQuery = supabaseAdmin
       .from('orders')
       .select('*')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false })
+
+    // Apply date filter based on time range
+    if (timeRange === 'This Year') {
+      // For "This Year", show all data from the beginning of current year
+      const yearStart = new Date(now.getFullYear(), 0, 1)
+      ordersQuery = ordersQuery.gte('created_at', yearStart.toISOString())
+    } else if (timeRange !== 'All Time') {
+      // For other ranges, apply the calculated date filter
+      ordersQuery = ordersQuery
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+    }
+    // For "All Time", no date filter is applied
 
     if (cafeteriaId && cafeteriaId !== 'all') {
       ordersQuery = ordersQuery.eq('cafeteria_id', cafeteriaId)
     }
 
-    const { data: orders, error: ordersError } = await ordersQuery
+    const { data: allOrders, error: ordersError } = await ordersQuery
 
     if (ordersError) {
       console.error('Error fetching orders:', ordersError)
       return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
     }
+
+    // Filter orders for metrics (exclude ALL cancelled orders)
+    const orders = allOrders?.filter(order =>
+      order.status !== 'cancelled'
+    ) || []
+
+    console.log('Admin Dashboard - Orders fetched:', {
+      total: allOrders?.length || 0,
+      filtered: orders.length,
+      timeRange,
+      dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`,
+      sampleOrder: orders[0]
+    })
 
     // Fetch cafeterias
     const { data: cafeterias, error: cafeteriasError } = await supabaseAdmin
@@ -83,19 +107,19 @@ export async function GET(request: NextRequest) {
       return sum + amount
     }, 0) || 0
 
-    // Calculate revenue using existing calculated fields
+    // Calculate revenue using the admin_revenue field (which already contains userFee + commission)
     const totalRevenue = orders?.reduce((sum, order) => {
-      const userFee = parseFloat(order.user_service_fee) || 0
-      const cafeteriaCommission = parseFloat(order.cafeteria_commission) || 0
       const adminRevenue = parseFloat(order.admin_revenue) || 0
-      return sum + userFee + cafeteriaCommission + adminRevenue
+      return sum + adminRevenue
     }, 0) || 0
 
-    console.log('Dashboard metrics:', {
+    console.log('Admin Dashboard - Final metrics:', {
       totalOrders,
       totalOrderValue,
       totalRevenue,
-      sampleOrder: orders?.[0]
+      activeCafeterias: cafeterias?.filter(c => c.is_active && c.approval_status === 'approved').length || 0,
+      totalUsers: totalUsers || 0,
+      hasData: orders.length > 0
     })
 
     // Generate chart data for the last 12 months
@@ -105,17 +129,28 @@ export async function GET(request: NextRequest) {
       return date
     })
 
-    // Fetch orders for chart data (last 12 months)
+    // Fetch orders for chart data (last 12 months) - include all meaningful orders
     const chartStartDate = new Date()
     chartStartDate.setMonth(chartStartDate.getMonth() - 11)
     chartStartDate.setDate(1)
     chartStartDate.setHours(0, 0, 0, 0)
 
-    const { data: chartOrders } = await supabaseAdmin
+    const { data: allChartOrders } = await supabaseAdmin
       .from('orders')
-      .select('total_amount, created_at, cafeteria_id, user_service_fee, cafeteria_commission, admin_revenue')
+      .select('total_amount, created_at, cafeteria_id, user_service_fee, cafeteria_commission, admin_revenue, status')
       .gte('created_at', chartStartDate.toISOString())
       .order('created_at', { ascending: false })
+
+    // Filter chart orders (exclude ALL cancelled orders)
+    const chartOrders = allChartOrders?.filter(order =>
+      order.status !== 'cancelled'
+    ) || []
+
+    console.log('Admin Dashboard - Chart data:', {
+      totalChartOrders: allChartOrders?.length || 0,
+      filteredChartOrders: chartOrders.length,
+      chartStartDate: chartStartDate.toISOString()
+    })
 
     // Process chart data
     const revenueChart = chartMonths.map(month => {
@@ -128,10 +163,8 @@ export async function GET(request: NextRequest) {
       }) || []
 
       return monthOrders.reduce((sum, order) => {
-        const userFee = parseFloat(order.user_service_fee) || 0
-        const cafeteriaCommission = parseFloat(order.cafeteria_commission) || 0
         const adminRevenue = parseFloat(order.admin_revenue) || 0
-        return sum + userFee + cafeteriaCommission + adminRevenue
+        return sum + adminRevenue
       }, 0)
     })
 
@@ -159,12 +192,15 @@ export async function GET(request: NextRequest) {
         const amount = parseFloat(order.total_amount) || 0
         return sum + amount
       }, 0)
-      const cafeteriaRevenue = cafeteriaOrders.reduce((sum, order) => {
-        const userFee = parseFloat(order.user_service_fee) || 0
-        const cafeteriaCommission = parseFloat(order.cafeteria_commission) || 0
-        const adminRevenue = parseFloat(order.admin_revenue) || 0
-        return sum + userFee + cafeteriaCommission + adminRevenue
+
+      // Admin revenue (platform's cut)
+      const adminRevenue = cafeteriaOrders.reduce((sum, order) => {
+        const adminRev = parseFloat(order.admin_revenue) || 0
+        return sum + adminRev
       }, 0)
+
+      // Actual cafeteria revenue (total - admin cut)
+      const actualCafeteriaRevenue = cafeteriaOrderValue - adminRevenue
 
       // Estimate users per cafeteria (simplified)
       const estimatedUsers = Math.floor((totalUsers || 0) / (cafeterias?.length || 1))
@@ -176,7 +212,8 @@ export async function GET(request: NextRequest) {
         users: estimatedUsers,
         orders: cafeteriaOrders.length,
         orderValue: cafeteriaOrderValue,
-        revenue: cafeteriaRevenue
+        revenue: adminRevenue, // Platform's revenue from this cafeteria
+        cafeteriaRevenue: actualCafeteriaRevenue // Cafeteria's actual revenue
       }
     }) || []
 

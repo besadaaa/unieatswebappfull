@@ -12,22 +12,13 @@ import {
   HelpCircle,
   LayoutDashboard,
   LogOut,
-  Settings,
   ShieldAlert,
   Users,
-  Star,
-  User,
-  Bell
+  Star
 } from "lucide-react"
 import { signOut } from "@/app/actions/auth"
 import { useState, useEffect } from "react"
 import { toast } from "@/components/ui/use-toast"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 export function AdminSidebar() {
   const pathname = usePathname()
@@ -268,46 +259,7 @@ export function AdminSidebar() {
       </nav>
 
       <div className="mt-auto p-4 border-t border-white/10">
-        {/* Profile and Notification Icons */}
-        <div className="flex items-center gap-2 mb-4">
-          {/* Notification Icon */}
-          <button
-            onClick={() => handleNavigation("/admin/notifications")}
-            className="flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-300 relative group"
-            title="Notifications"
-          >
-            <Bell size={18} />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">3</span>
-          </button>
 
-          {/* Profile Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-300 group"
-                title="Profile & Settings"
-              >
-                <User size={18} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-slate-800 border-slate-700">
-              <DropdownMenuItem
-                onClick={() => handleNavigation("/admin/profile")}
-                className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
-              >
-                <User size={16} className="mr-2" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleNavigation("/admin/settings")}
-                className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
-              >
-                <Settings size={16} className="mr-2" />
-                Settings
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
 
         <button
           onClick={handleLogout}

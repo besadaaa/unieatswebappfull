@@ -20,6 +20,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { PageHeader } from "@/components/admin/page-header"
 
 // Define cafeteria application type
 type CafeteriaApplication = {
@@ -294,13 +295,14 @@ export default function CafeteriaApprovals() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <Card className="modern-card glass-effect hover-lift">
-          <CardContent className="p-8 relative">
-            <div className="mb-8 animate-slide-in-up">
-              <h2 className="text-2xl font-bold gradient-text animate-shimmer">Cafeteria Applications</h2>
-              <p className="text-sm text-slate-400 mt-2">Review and manage cafeteria applications for UniEats</p>
-            </div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-full blur-2xl"></div>
+      <PageHeader
+        title="Cafeteria Applications"
+        subtitle="Review and manage cafeteria applications for UniEats platform"
+      />
+
+      <Card className="modern-card glass-effect hover-lift">
+        <CardContent className="p-8 relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-full blur-2xl"></div>
 
             <div className="relative mb-8 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />

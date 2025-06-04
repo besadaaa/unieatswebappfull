@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react"
 
 import { toast } from "@/components/ui/use-toast"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
 type BusinessHours = {
   day: string
@@ -138,12 +139,12 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 p-6 animate-fade-in">
-        <div className="mb-8 animate-slide-in-up">
-          <h1 className="text-3xl font-bold gradient-text animate-shimmer">Settings</h1>
-          <p className="text-slate-400 mt-2">Configure your cafeteria preferences and settings</p>
-        </div>
+      <CafeteriaPageHeader
+        title="Settings"
+        subtitle="Configure your cafeteria preferences and settings"
+      />
 
-        <Tabs defaultValue="general" className="space-y-6 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+      <Tabs defaultValue="general" className="space-y-6 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
           <TabsList className="grid w-full grid-cols-3 glass-effect border border-white/20 p-1 h-auto rounded-xl">
             <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">General</TabsTrigger>
             <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">Notifications</TabsTrigger>
@@ -373,7 +374,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
+      </Tabs>
     </div>
   )
 }

@@ -48,12 +48,13 @@ import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { formatCurrency } from "@/lib/currency"
 import { useMenuItemsSync, RealtimeEvent } from "@/lib/realtime-sync"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
 
 
 // Enhanced types for better type safety
 interface MenuItem {
-  id: number
+  id: string | number
   name: string
   description: string
   price: number
@@ -69,7 +70,14 @@ interface MenuItem {
     fat: number
   }
   allergens: string[]
-  rating: number
+  ingredients: string[]
+  ratings: {
+    average: number
+    count: number
+  }
+  createdAt: string
+  updatedAt: string
+  customizationOptions?: any[]
 }
 
 // Improved categories with more options
@@ -259,9 +267,6 @@ const ensureItemProperties = (item: any): MenuItem => {
     },
     ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
     preparationTime: item.preparationTime || 15,
-    featured: item.featured || false,
-    specialOffer: item.specialOffer || false,
-    discountPercentage: item.discountPercentage || 0,
     ratings: {
       average: item.ratings?.average || item.rating || 0,
       count: item.ratings?.count || item.totalRatings || 0,
@@ -323,9 +328,6 @@ export default function MenuPage() {
     },
     ingredients: [] as string[],
     preparationTime: 15,
-    featured: false,
-    specialOffer: false,
-    discountPercentage: 0,
     tags: [] as string[],
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
@@ -334,8 +336,6 @@ export default function MenuPage() {
     priceRange: { min: 0, max: 50 },
     availability: "all", // "all", "available", "unavailable"
     allergenFree: [] as string[],
-    featured: false,
-    specialOffer: false,
   })
   const [showFilters, setShowFilters] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -526,9 +526,6 @@ export default function MenuPage() {
         },
         ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
         preparationTime: item.preparation_time || 15,
-        featured: false,
-        specialOffer: false,
-        discountPercentage: 0,
         customizationOptions: item.customization_options || [],
         createdAt: item.created_at,
         updatedAt: item.updated_at
@@ -636,15 +633,7 @@ export default function MenuPage() {
         )
       }
 
-      // Featured filter
-      if (filterOptions.featured) {
-        result = result.filter((item) => item.featured)
-      }
 
-      // Special offer filter
-      if (filterOptions.specialOffer) {
-        result = result.filter((item) => item.specialOffer)
-      }
     }
 
     // Apply sorting
@@ -770,9 +759,7 @@ export default function MenuPage() {
       errors.category = "Category is required"
     }
 
-    if (formData.specialOffer && (formData.discountPercentage <= 0 || formData.discountPercentage > 100)) {
-      errors.discountPercentage = "Discount must be between 1-100%"
-    }
+
 
     if (formData.preparationTime <= 0) {
       errors.preparationTime = "Preparation time must be greater than zero"
@@ -892,9 +879,6 @@ export default function MenuPage() {
         },
         ingredients: [],
         preparationTime: 15,
-        featured: false,
-        specialOffer: false,
-        discountPercentage: 0,
         tags: [],
       })
 
@@ -928,9 +912,7 @@ export default function MenuPage() {
       nutritionalInfo: { ...safeItem.nutritionalInfo },
       ingredients: [...safeItem.ingredients],
       preparationTime: safeItem.preparationTime,
-      featured: safeItem.featured,
-      specialOffer: safeItem.specialOffer,
-      discountPercentage: safeItem.discountPercentage,
+
       tags: [...safeItem.tags],
     })
 
@@ -1317,9 +1299,6 @@ export default function MenuPage() {
         "Category",
         "Available",
         "Preparation Time",
-        "Featured",
-        "Special Offer",
-        "Discount",
         "Calories",
         "Protein",
         "Carbs",
@@ -1339,9 +1318,6 @@ export default function MenuPage() {
         item.category,
         item.available ? "Yes" : "No",
         item.preparationTime,
-        item.featured ? "Yes" : "No",
-        item.specialOffer ? "Yes" : "No",
-        item.discountPercentage,
         item.nutritionalInfo?.calories || 0,
         item.nutritionalInfo?.protein || 0,
         item.nutritionalInfo?.carbs || 0,
@@ -1425,21 +1401,18 @@ export default function MenuPage() {
           category: values[4] || "Lunch",
           available: values[5]?.toLowerCase() === "yes",
           preparationTime: Number.parseInt(values[6]) || 15,
-          featured: values[7]?.toLowerCase() === "yes",
-          specialOffer: values[8]?.toLowerCase() === "yes",
-          discountPercentage: Number.parseFloat(values[9]) || 0,
           nutritionalInfo: {
-            calories: Number.parseFloat(values[10]) || 0,
-            protein: Number.parseFloat(values[11]) || 0,
-            carbs: Number.parseFloat(values[12]) || 0,
-            fat: Number.parseFloat(values[13]) || 0,
+            calories: Number.parseFloat(values[7]) || 0,
+            protein: Number.parseFloat(values[8]) || 0,
+            carbs: Number.parseFloat(values[9]) || 0,
+            fat: Number.parseFloat(values[10]) || 0,
           },
-          allergens: values[14] ? values[14].split(", ") : [],
-          ingredients: values[15] ? values[15].split(", ") : [],
-          tags: values[16] ? values[16].split(", ") : [],
+          allergens: values[11] ? values[11].split(", ") : [],
+          ingredients: values[12] ? values[12].split(", ") : [],
+          tags: values[13] ? values[13].split(", ") : [],
           ratings: {
-            average: Number.parseFloat(values[17]) || 0,
-            count: Number.parseInt(values[18]) || 0,
+            average: Number.parseFloat(values[14]) || 0,
+            count: Number.parseInt(values[15]) || 0,
           },
           image: "/diverse-food-spread.png",
           createdAt: new Date().toISOString(),
@@ -1529,10 +1502,13 @@ export default function MenuPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-8 animate-fade-in">
+      <CafeteriaPageHeader
+        title="Menu Management"
+        subtitle="Create, edit and manage your menu items"
+      />
+
       <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0 animate-slide-in-up">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight gradient-text animate-shimmer">Menu Management</h1>
-          <p className="text-slate-400 mt-2">Create, edit and manage your menu items</p>
           {isOffline && (
             <Badge variant="outline" className="mt-2 bg-yellow-100 text-yellow-800 border-yellow-300">
               Offline Mode - Changes will sync when you're back online
@@ -1856,41 +1832,7 @@ export default function MenuPage() {
                         <p className="text-red-500 text-sm">{formErrors.preparationTime}</p>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="featured"
-                        checked={formData.featured}
-                        onCheckedChange={(checked) => handleToggleChange("featured", checked)}
-                      />
-                      <Label htmlFor="featured">Featured item</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="specialOffer"
-                        checked={formData.specialOffer}
-                        onCheckedChange={(checked) => handleToggleChange("specialOffer", checked)}
-                      />
-                      <Label htmlFor="specialOffer">Special offer</Label>
-                    </div>
-                    {formData.specialOffer && (
-                      <div className="space-y-2 pl-6">
-                        <Label htmlFor="discountPercentage">Discount Percentage (%)</Label>
-                        <Input
-                          id="discountPercentage"
-                          name="discountPercentage"
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={formData.discountPercentage}
-                          onChange={handleInputChange}
-                          placeholder="10"
-                          className={formErrors.discountPercentage ? "border-red-500" : ""}
-                        />
-                        {formErrors.discountPercentage && (
-                          <p className="text-red-500 text-sm">{formErrors.discountPercentage}</p>
-                        )}
-                      </div>
-                    )}
+
                   </TabsContent>
                 </Tabs>
               </div>
@@ -2076,58 +2018,26 @@ export default function MenuPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Additional Filters</Label>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="filter-featured"
-                    checked={filterOptions.featured}
-                    onCheckedChange={(checked) => {
-                      setFilterOptions((prev) => ({
-                        ...prev,
-                        featured: checked as boolean,
-                      }))
-                    }}
-                  />
-                  <Label htmlFor="filter-featured">Featured Items Only</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="filter-special-offer"
-                    checked={filterOptions.specialOffer}
-                    onCheckedChange={(checked) => {
-                      setFilterOptions((prev) => ({
-                        ...prev,
-                        specialOffer: checked as boolean,
-                      }))
-                    }}
-                  />
-                  <Label htmlFor="filter-special-offer">Special Offers Only</Label>
-                </div>
-              </div>
-
-              <div className="space-y-2 mt-4">
-                <Label>Allergen-Free</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {allergenOptions &&
-                    allergenOptions.slice(0, 6).map((allergen) => (
-                      <div key={allergen} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`filter-allergen-${allergen}`}
-                          checked={filterOptions.allergenFree.includes(allergen)}
-                          onCheckedChange={(checked) => {
-                            setFilterOptions((prev) => ({
-                              ...prev,
-                              allergenFree: checked
-                                ? [...prev.allergenFree, allergen]
-                                : prev.allergenFree.filter((a) => a !== allergen),
-                            }))
-                          }}
-                        />
-                        <Label htmlFor={`filter-allergen-${allergen}`}>{allergen}</Label>
-                      </div>
-                    ))}
-                </div>
+              <Label>Allergen-Free</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {allergenOptions &&
+                  allergenOptions.slice(0, 6).map((allergen) => (
+                    <div key={allergen} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`filter-allergen-${allergen}`}
+                        checked={filterOptions.allergenFree.includes(allergen)}
+                        onCheckedChange={(checked) => {
+                          setFilterOptions((prev) => ({
+                            ...prev,
+                            allergenFree: checked
+                              ? [...prev.allergenFree, allergen]
+                              : prev.allergenFree.filter((a) => a !== allergen),
+                          }))
+                        }}
+                      />
+                      <Label htmlFor={`filter-allergen-${allergen}`}>{allergen}</Label>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
@@ -2141,8 +2051,6 @@ export default function MenuPage() {
                   priceRange: { min: 0, max: 50 },
                   availability: "all",
                   allergenFree: [],
-                  featured: false,
-                  specialOffer: false,
                 })
               }}
             >
@@ -2205,8 +2113,6 @@ export default function MenuPage() {
                 priceRange: { min: 0, max: 50 },
                 availability: "all",
                 allergenFree: [],
-                featured: false,
-                specialOffer: false,
               })
               setActiveTab("all")
             }}
@@ -2249,9 +2155,6 @@ export default function MenuPage() {
                     </Badge>
                   </div>
                 )}
-                {item.specialOffer && (
-                  <Badge className="absolute top-2 right-2 bg-red-500">{item.discountPercentage}% OFF</Badge>
-                )}
               </div>
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
@@ -2267,7 +2170,6 @@ export default function MenuPage() {
               <CardContent className="pb-2">
                 <div className="flex flex-wrap gap-1 mb-2">
                   <Badge variant="outline">{item.category}</Badge>
-                  {item.featured && <Badge variant="secondary">Featured</Badge>}
                   {item.tags &&
                     item.tags.slice(0, 2).map((tag, i) => (
                       <Badge key={i} variant="outline" className="bg-gray-100">
@@ -2643,41 +2545,7 @@ export default function MenuPage() {
                   />
                   {formErrors.preparationTime && <p className="text-red-500 text-sm">{formErrors.preparationTime}</p>}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-featured"
-                    checked={formData.featured}
-                    onCheckedChange={(checked) => handleToggleChange("featured", checked)}
-                  />
-                  <Label htmlFor="edit-featured">Featured item</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-specialOffer"
-                    checked={formData.specialOffer}
-                    onCheckedChange={(checked) => handleToggleChange("specialOffer", checked)}
-                  />
-                  <Label htmlFor="edit-specialOffer">Special offer</Label>
-                </div>
-                {formData.specialOffer && (
-                  <div className="space-y-2 pl-6">
-                    <Label htmlFor="edit-discountPercentage">Discount Percentage (%)</Label>
-                    <Input
-                      id="edit-discountPercentage"
-                      name="discountPercentage"
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={formData.discountPercentage}
-                      onChange={handleInputChange}
-                      placeholder="10"
-                      className={formErrors.discountPercentage ? "border-red-500" : ""}
-                    />
-                    {formErrors.discountPercentage && (
-                      <p className="text-red-500 text-sm">{formErrors.discountPercentage}</p>
-                    )}
-                  </div>
-                )}
+
               </TabsContent>
             </Tabs>
           </div>

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
+import { PageHeader } from "@/components/admin/page-header"
 
 interface Report {
   id: string
@@ -298,16 +299,17 @@ export default function Reports() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <Card className="modern-card glass-effect hover-lift">
-          <CardContent className="p-8 relative">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 animate-slide-in-up">
-              <div>
-                <h2 className="text-2xl font-bold gradient-text animate-shimmer">Reports</h2>
-                <p className="text-sm text-slate-400 mt-2">Access and generate system reports</p>
-              </div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-full blur-2xl"></div>
+      <PageHeader
+        title="Reports"
+        subtitle="Access and generate comprehensive system reports"
+      />
 
-              <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
+      <Card className="modern-card glass-effect hover-lift">
+        <CardContent className="p-8 relative">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 animate-slide-in-up">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-full blur-2xl"></div>
+
+            <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
                 <Button
                   variant="outline"
                   className="glass-effect border-white/20 hover:border-blue-500/50 btn-modern"

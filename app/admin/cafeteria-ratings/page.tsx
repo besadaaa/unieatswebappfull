@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Rating } from "@/components/menu-item-rating"
 import { Search, ArrowUpDown, Download } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { PageHeader } from "@/components/admin/page-header"
 
 // Types for calculated ratings
 interface CafeteriaRating {
@@ -58,154 +59,47 @@ export default function CafeteriaRatingsPage() {
       try {
         setLoading(true)
 
-        // Fetch cafeterias with ratings from orders and reviews
-        const { data: cafeterias, error: cafeteriasError } = await supabase
-          .from('cafeterias')
-          .select(`
-            *,
-            profiles(full_name, phone)
-          `)
-          .eq('approval_status', 'approved')
+        // Fetch ratings data from the new API
+        const response = await fetch('/api/admin/ratings')
 
-        if (cafeteriasError) throw cafeteriasError
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ratings: ${response.status}`)
+        }
 
-        // Fetch all orders with ratings for cafeterias
-        const { data: orders, error: ordersError } = await supabase
-          .from('orders')
-          .select(`
-            id,
-            cafeteria_id,
-            rating,
-            review_comment,
-            created_at,
-            user_id,
-            student_id
-          `)
-          .not('rating', 'is', null)
+        const result = await response.json()
 
-        if (ordersError) throw ordersError
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch ratings')
+        }
 
-        // Calculate cafeteria ratings
-        const calculatedRatings: CafeteriaRating[] = cafeterias?.map((cafeteria: any) => {
-          const cafeteriaOrders = orders?.filter(order => order.cafeteria_id === cafeteria.id) || []
+        console.log('📊 Fetched ratings data:', result.data)
 
-          if (cafeteriaOrders.length === 0) {
-            return {
-              id: cafeteria.id,
-              name: cafeteria.name,
-              location: cafeteria.location || 'Location not specified',
-              overallRating: 0,
-              totalRatings: 0,
-              foodQuality: 0,
-              service: 0,
-              cleanliness: 0,
-              valueForMoney: 0,
-              recentReviews: []
-            }
-          }
+        // Set cafeteria ratings from API
+        setCafeteriaRatings(result.data.cafeteriaRatings || [])
 
-          // Calculate average rating
-          const totalRating = cafeteriaOrders.reduce((sum, order) => sum + (order.rating || 0), 0)
-          const averageRating = totalRating / cafeteriaOrders.length
+        // Set menu item ratings from API
+        setTopRatedItems(result.data.menuItemRatings || [])
 
-          // For demo purposes, create variations of the overall rating for different aspects
-          const overallRating = Number(averageRating.toFixed(1))
-          const foodQuality = Number((averageRating + (Math.random() * 0.4 - 0.2)).toFixed(1))
-          const service = Number((averageRating + (Math.random() * 0.4 - 0.2)).toFixed(1))
-          const cleanliness = Number((averageRating + (Math.random() * 0.4 - 0.2)).toFixed(1))
-          const valueForMoney = Number((averageRating + (Math.random() * 0.4 - 0.2)).toFixed(1))
-
-          // Get recent reviews
-          const recentReviews = cafeteriaOrders
-            .filter(order => order.review_comment)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, 3)
-            .map(order => ({
-              id: order.id,
-              user: order.profiles?.full_name || order.profiles?.email?.split('@')[0] || 'Anonymous',
-              rating: order.rating || 0,
-              comment: order.review_comment || '',
-              date: order.created_at
-            }))
-
-          return {
-            id: cafeteria.id,
-            name: cafeteria.name,
-            location: cafeteria.location || 'Location not specified',
-            overallRating,
-            totalRatings: cafeteriaOrders.length,
-            foodQuality: Math.max(1, Math.min(5, foodQuality)),
-            service: Math.max(1, Math.min(5, service)),
-            cleanliness: Math.max(1, Math.min(5, cleanliness)),
-            valueForMoney: Math.max(1, Math.min(5, valueForMoney)),
-            recentReviews
-          }
-        }) || []
-
-        setCafeteriaRatings(calculatedRatings)
-
-        // Fetch menu items with ratings
-        const { data: menuItems, error: menuError } = await supabase
-          .from('menu_items')
-          .select(`
-            *,
-            cafeterias(name)
-          `)
-
-        if (menuError) throw menuError
-
-        // Calculate menu item ratings from orders
-        const { data: orderItems, error: orderItemsError } = await supabase
-          .from('order_items')
-          .select(`
-            menu_item_id,
-            rating,
-            orders!order_items_order_id_fkey(cafeteria_id)
-          `)
-          .not('rating', 'is', null)
-
-        if (orderItemsError) throw orderItemsError
-
-        // Calculate top rated menu items
-        const itemRatings: { [key: string]: { ratings: number[], cafeteria_id: string } } = {}
-
-        orderItems?.forEach((orderItem: any) => {
-          const itemId = orderItem.menu_item_id
-          if (!itemRatings[itemId]) {
-            itemRatings[itemId] = {
-              ratings: [],
-              cafeteria_id: orderItem.orders?.cafeteria_id
-            }
-          }
-          itemRatings[itemId].ratings.push(orderItem.rating)
-        })
-
-        const calculatedMenuItems: MenuItemRating[] = menuItems?.map((item: any) => {
-          const ratings = itemRatings[item.id]?.ratings || []
-          const averageRating = ratings.length > 0
-            ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
-            : 0
-
-          return {
-            id: item.id,
-            name: item.name,
-            cafeteria: item.cafeterias?.name || 'Unknown Cafeteria',
-            rating: Number(averageRating.toFixed(1)),
-            totalRatings: ratings.length,
-            category: item.category || 'other'
-          }
-        })
-        .filter((item: MenuItemRating) => item.totalRatings > 0)
-        .sort((a: MenuItemRating, b: MenuItemRating) => b.rating - a.rating)
-        .slice(0, 10) || []
-
-        setTopRatedItems(calculatedMenuItems)
-
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading ratings data:', error)
+        console.error('Error details:', {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint
+        })
+
+        let errorMessage = "Failed to load ratings data. Please try again."
+
+        if (error?.message) {
+          errorMessage = `Database error: ${error.message}`
+        } else if (error?.code) {
+          errorMessage = `Error code: ${error.code}`
+        }
+
         toast({
           title: "Error",
-          description: "Failed to load ratings data. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         })
       } finally {
@@ -284,11 +178,14 @@ export default function CafeteriaRatingsPage() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <div className="flex justify-between items-center mb-8 animate-slide-in-up">
-          <h1 className="text-3xl font-bold gradient-text animate-shimmer">Ratings & Reviews</h1>
+      <PageHeader
+        title="Ratings & Reviews"
+        subtitle="Monitor cafeteria and menu item ratings across the platform"
+      />
 
-          <div className="flex gap-3">
-            <form onSubmit={handleSearch} className="relative w-64">
+      <div className="flex justify-end items-center mb-8 animate-slide-in-up">
+        <div className="flex gap-3">
+          <form onSubmit={handleSearch} className="relative w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
               <Input
                 placeholder="Search cafeterias..."
@@ -315,6 +212,44 @@ export default function CafeteriaRatingsPage() {
             <Button variant="outline" className="glass-effect border-white/20 hover:border-purple-500/50 btn-modern" onClick={handleExportData}>
               <Download className="mr-2 h-4 w-4" />
               Export
+            </Button>
+
+            <Button
+              variant="outline"
+              className="glass-effect border-white/20 hover:border-green-500/50 btn-modern"
+              onClick={async () => {
+                setLoading(true)
+                try {
+                  const response = await fetch('/api/admin/create-sample-ratings', {
+                    method: 'POST'
+                  })
+                  const result = await response.json()
+                  if (result.success) {
+                    toast({
+                      title: "Sample Data Created!",
+                      description: `Created ${result.data.cafeteriaRatings} cafeteria ratings and ${result.data.menuItemRatings} menu item ratings`,
+                    })
+                    // Reload the page to show new data
+                    window.location.reload()
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: result.error,
+                      variant: "destructive",
+                    })
+                  }
+                } catch (err) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to create sample data",
+                    variant: "destructive",
+                  })
+                } finally {
+                  setLoading(false)
+                }
+              }}
+            >
+              Create Sample Data
             </Button>
           </div>
         </div>

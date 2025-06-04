@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { PageHeader } from "@/components/admin/page-header"
 
 import { formatCurrency } from "@/lib/currency"
 import {
@@ -52,7 +53,7 @@ interface CafeteriaData {
 }
 
 export default function AdminDashboard() {
-  const [timeRange, setTimeRange] = useState("This Month")
+  const [timeRange, setTimeRange] = useState("This Year")
   const [chartView, setChartView] = useState("revenue")
   const [cafeteriaFilter, setCafeteriaFilter] = useState("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -91,8 +92,13 @@ export default function AdminDashboard() {
         ...(cafeteriaFilter !== 'all' && { cafeteriaId: cafeteriaFilter })
       })
 
-      // Fetch data from our dashboard API
-      const response = await fetch(`/api/dashboard?${params}`)
+      // Fetch data from our dashboard API (with cache busting)
+      const response = await fetch(`/api/dashboard?${params}&_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -104,10 +110,12 @@ export default function AdminDashboard() {
       setChartData(data.charts)
       setCafeterias(data.cafeterias)
 
-      console.log('Dashboard data loaded:', {
-        metrics: data.metrics,
-        cafeterias: data.cafeterias.length,
-        timeRange: data.timeRange
+      console.log('🎯 Frontend Dashboard Data Received:', {
+        totalRevenue: data.metrics.totalRevenue,
+        totalOrderValue: data.metrics.totalOrderValue,
+        totalOrders: data.metrics.totalOrders,
+        timeRange: data.timeRange,
+        fullMetrics: data.metrics
       })
 
     } catch (error) {
@@ -266,9 +274,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <h1 className="text-3xl font-bold gradient-text">Dashboard Overview</h1>
+        <PageHeader
+          title="Dashboard Overview"
+          subtitle="Monitor your platform's performance and key metrics"
+        />
 
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -284,6 +295,7 @@ export default function AdminDashboard() {
                 <DropdownMenuItem onClick={() => handleTimeRangeChange("This Month")}>This Month</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleTimeRangeChange("This Quarter")}>This Quarter</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleTimeRangeChange("This Year")}>This Year</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleTimeRangeChange("All Time")}>All Time</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useEffect, useRef } from "react"
 import { toast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 import { getCurrentUser } from "@/lib/supabase"
 
 type ProfileData = {
@@ -114,6 +115,11 @@ export default function ProfilePage() {
         const firstName = nameParts[0] || ''
         const lastName = nameParts.slice(1).join(' ') || ''
 
+        // Set avatar image if available
+        if (profile.avatar_url) {
+          setAvatarImage(profile.avatar_url)
+        }
+
         setProfileData({
           personal: {
             firstName,
@@ -176,17 +182,32 @@ export default function ProfilePage() {
     })
 
     try {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        throw new Error('Please sign in to upload photos')
+      }
+
       // Import storage utility
       const { uploadUserAvatar } = await import('@/lib/storage')
 
-      // Get current user ID (you'll need to implement this based on your auth system)
-      const userId = 'current-user-id' // Replace with actual user ID from auth
-
       // Upload to Supabase Storage
-      const result = await uploadUserAvatar(file, userId)
+      const result = await uploadUserAvatar(file, user.id)
 
       if (result.success && result.url) {
         setAvatarImage(result.url)
+
+        // Update profile with new avatar URL
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: result.url })
+          .eq('id', user.id)
+
+        if (updateError) {
+          console.error('Error updating avatar URL:', updateError)
+          throw new Error(`Failed to update profile: ${updateError.message}`)
+        }
+
         toast({
           title: "Avatar updated",
           description: "Your profile photo has been updated successfully.",
@@ -196,15 +217,24 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Upload error:', error)
+
+      let errorMessage = "Failed to upload image. Please try again."
+
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String(error.message)
+      }
+
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload image. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate password if changed
     if (tempData.security.newPassword) {
       if (!tempData.security.currentPassword) {
@@ -232,15 +262,62 @@ export default function ProfilePage() {
       description: "Please wait while we update your profile.",
     })
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        throw new Error('Please sign in to update your profile')
+      }
+
+      // Prepare profile updates
+      const profileUpdates = {
+        full_name: `${tempData.personal.firstName} ${tempData.personal.lastName}`.trim(),
+        phone: tempData.personal.phone,
+      }
+
+      // Prepare cafeteria updates (excluding business_hours as it doesn't exist in the table)
+      const cafeteriaUpdates = {
+        name: tempData.business.cafeName,
+        location: tempData.business.location,
+        description: tempData.business.description,
+      }
+
+      // Call API to update profile
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          profileUpdates,
+          cafeteriaUpdates,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update profile')
+      }
+
+      // Update local state
       setProfileData({ ...tempData })
       setIsEditing(false)
+
       toast({
         title: "Profile updated",
         description: "Your profile information has been updated successfully.",
       })
-    }, 1500)
+
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCancel = () => {
@@ -261,7 +338,12 @@ export default function ProfilePage() {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-        <div className="flex flex-col md:flex-row gap-6">
+      <CafeteriaPageHeader
+        title="Profile"
+        subtitle="Manage your personal and business information"
+      />
+
+      <div className="flex flex-col md:flex-row gap-6">
           <Card className="w-full md:w-1/3">
             <CardHeader>
               <CardTitle>Profile</CardTitle>
@@ -439,7 +521,7 @@ export default function ProfilePage() {
               )}
             </CardFooter>
           </Card>
-        </div>
+      </div>
     </div>
   )
 }

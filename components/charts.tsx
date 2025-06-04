@@ -787,39 +787,7 @@ export function Charts({
 
   const { colors, PIE_CHART_COLORS, BAR_CHART_COLORS, getCategoryColor, generateBackgroundColors } = useChartColors()
 
-  // Generate appropriate colors based on chart type if not provided
-  const getBackgroundColors = () => {
-    if (backgroundColor) return backgroundColor
 
-    switch (type) {
-      case "pie":
-      case "doughnut":
-        return PIE_CHART_COLORS.slice(0, data.length)
-      case "bar":
-        return data.length <= 5 ? BAR_CHART_COLORS.slice(0, data.length) : generateBackgroundColors([colors.primary])
-      case "line":
-        return generateBackgroundColors([colors.primary])
-      default:
-        return generateBackgroundColors([colors.primary])
-    }
-  }
-
-  // Generate border colors based on chart type if not provided
-  const getBorderColors = () => {
-    if (borderColor) return borderColor
-
-    switch (type) {
-      case "pie":
-      case "doughnut":
-        return PIE_CHART_COLORS.slice(0, data.length)
-      case "bar":
-        return data.length <= 5 ? BAR_CHART_COLORS.slice(0, data.length) : [colors.primary]
-      case "line":
-        return [colors.primary]
-      default:
-        return [colors.primary]
-    }
-  }
 
   // Calculate y-scale function for annotations
   const calculateYScale = (value: number) => {
@@ -837,25 +805,41 @@ export function Charts({
   const drawChart = () => {
     if (!chartRef.current) return
 
-    // Ensure labels and data have the same length
-    if (!labels || labels.length === 0) {
-      // Generate default labels if none provided
-      labels = Array.from({ length: data.length }, (_, i) => `Item ${i + 1}`)
+    // Early return if data is empty or invalid
+    if (!data || data.length === 0) {
+      console.warn('Chart data is empty, skipping chart rendering')
+      return
     }
 
-    if (data.length !== labels.length) {
-      console.error(`Labels length (${labels.length}) must match data length (${data.length})`)
-      // Adjust data or labels to match lengths
-      const adjustedLabels = [...labels]
-      while (adjustedLabels.length < data.length) {
-        adjustedLabels.push(`Item ${adjustedLabels.length + 1}`)
-      }
-      // Or trim data to match labels length
-      const adjustedData = data.slice(0, Math.max(labels.length, 1))
+    // Create local copies for manipulation
+    let chartLabels = labels || []
+    let chartData = [...data]
 
-      // Use the adjusted arrays
-      labels = adjustedLabels
-      data = adjustedData
+    // Ensure labels and data have the same length
+    if (!chartLabels || chartLabels.length === 0) {
+      // Generate default labels if none provided
+      chartLabels = Array.from({ length: chartData.length }, (_, i) => `Item ${i + 1}`)
+    }
+
+    if (chartData.length !== chartLabels.length) {
+      console.warn(`Labels length (${chartLabels.length}) doesn't match data length (${chartData.length}), adjusting...`)
+
+      // Adjust labels to match data length
+      if (chartLabels.length < chartData.length) {
+        // Add missing labels
+        while (chartLabels.length < chartData.length) {
+          chartLabels.push(`Item ${chartLabels.length + 1}`)
+        }
+      } else {
+        // Trim data to match labels length
+        chartData = chartData.slice(0, chartLabels.length)
+      }
+    }
+
+    // Final validation
+    if (chartData.length === 0 || chartLabels.length === 0) {
+      console.warn('Chart data or labels are empty after processing, skipping chart rendering')
+      return
     }
 
     // Destroy existing chart if it exists
@@ -866,6 +850,40 @@ export function Charts({
     const ctx = chartRef.current.getContext("2d")
     if (!ctx) return
 
+    // Generate appropriate colors based on chart type if not provided
+    const getBackgroundColors = () => {
+      if (backgroundColor) return backgroundColor
+
+      switch (type) {
+        case "pie":
+        case "doughnut":
+          return PIE_CHART_COLORS.slice(0, chartData.length)
+        case "bar":
+          return chartData.length <= 5 ? BAR_CHART_COLORS.slice(0, chartData.length) : generateBackgroundColors([colors.primary])
+        case "line":
+          return generateBackgroundColors([colors.primary])
+        default:
+          return generateBackgroundColors([colors.primary])
+      }
+    }
+
+    // Generate border colors based on chart type if not provided
+    const getBorderColors = () => {
+      if (borderColor) return borderColor
+
+      switch (type) {
+        case "pie":
+        case "doughnut":
+          return PIE_CHART_COLORS.slice(0, chartData.length)
+        case "bar":
+          return chartData.length <= 5 ? BAR_CHART_COLORS.slice(0, chartData.length) : [colors.primary]
+        case "line":
+          return [colors.primary]
+        default:
+          return [colors.primary]
+      }
+    }
+
     // Get colors based on chart type
     const bgColors = getBackgroundColors()
     const bdrColors = getBorderColors()
@@ -875,20 +893,20 @@ export function Charts({
       type === "pie" || type === "doughnut"
         ? (backgroundColor && Array.isArray(backgroundColor) && backgroundColor.length > 0)
           ? backgroundColor // Use provided backgroundColor prop first
-          : labels.map((label) => getCategoryColor(label) || (Array.isArray(bgColors) ? bgColors[0] : bgColors))
+          : chartLabels.map((label) => getCategoryColor(label) || (Array.isArray(bgColors) ? bgColors[0] : bgColors))
         : bgColors
 
     const finalBorderColors =
       type === "pie" || type === "doughnut"
         ? (borderColor && Array.isArray(borderColor) && borderColor.length > 0)
           ? borderColor // Use provided borderColor prop first
-          : labels.map((label) => getCategoryColor(label) || (Array.isArray(bdrColors) ? bdrColors[0] : bdrColors))
+          : chartLabels.map((label) => getCategoryColor(label) || (Array.isArray(bdrColors) ? bdrColors[0] : bdrColors))
         : bdrColors
 
     // Enhanced dataset configuration
     const dataset = {
       label: title,
-      data,
+      data: chartData,
       backgroundColor: finalBgColors,
       borderColor: finalBorderColors,
       borderWidth: type === "pie" || type === "doughnut" ? 3 : 2,
@@ -914,7 +932,7 @@ export function Charts({
     chartInstance.current = new Chart(ctx, {
       type,
       data: {
-        labels,
+        labels: chartLabels,
         datasets: [dataset],
       },
       options: {
@@ -1081,20 +1099,32 @@ export function Charts({
       </CardHeader>
       <CardContent>
         <div ref={containerRef} style={{ height, position: "relative" }}>
-          <canvas ref={chartRef} />
+          {/* Show loading state or empty state */}
+          {(!data || data.length === 0) ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="text-slate-400 text-sm">No data available</div>
+                <div className="text-slate-500 text-xs mt-1">Chart will appear when data is loaded</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <canvas ref={chartRef} />
 
-          {/* Render annotations if there are any and they should be shown */}
-          {annotations && annotations.length > 0 && document.getElementById(`show-annotations-${chartId}`) && (
-            <ChartAnnotations
-              annotations={annotations}
-              chartType={type}
-              chartWidth={chartDimensions.width}
-              chartHeight={chartDimensions.height}
-              chartPadding={getChartPadding()}
-              dataLength={data.length}
-              yScale={calculateYScale}
-              maxValue={Math.max(...data)}
-            />
+              {/* Render annotations if there are any and they should be shown */}
+              {annotations && annotations.length > 0 && document.getElementById(`show-annotations-${chartId}`) && (
+                <ChartAnnotations
+                  annotations={annotations}
+                  chartType={type}
+                  chartWidth={chartDimensions.width}
+                  chartHeight={chartDimensions.height}
+                  chartPadding={getChartPadding()}
+                  dataLength={data.length}
+                  yScale={calculateYScale}
+                  maxValue={Math.max(...data)}
+                />
+              )}
+            </>
           )}
         </div>
       </CardContent>

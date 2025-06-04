@@ -48,6 +48,8 @@ export interface MenuItem {
   category: string
   is_available: boolean
   image_url?: string
+  rating?: number
+  totalRatings?: number
   nutrition_info?: {
     calories?: number
     protein?: number
@@ -194,7 +196,7 @@ export interface InventoryItem {
   cost_per_unit?: number
   supplier?: string
   expiry_date?: string
-  status: 'in-stock' | 'low' | 'out-of-stock' | 'expired'
+  status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'expired'
   last_restocked?: string
   created_at?: string
   updated_at?: string
@@ -474,20 +476,155 @@ export const saveInventoryItem = async (item: Omit<InventoryItem, 'id' | 'create
 }
 
 export const updateInventoryItem = async (id: string, updates: Partial<InventoryItem>): Promise<boolean> => {
-  const { error } = await supabase
-    .from('inventory_items')
-    .update({
+  try {
+    console.log('🔥 INVENTORY UPDATE FUNCTION CALLED 🔥')
+    console.log('Updating inventory item:', { id, updates })
+
+    // Check if user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      console.error('User not authenticated for inventory update:', authError)
+      return false
+    }
+
+    console.log('Authenticated user for inventory update:', user.id)
+
+    const updateData = {
       ...updates,
       updated_at: new Date().toISOString()
-    })
-    .eq('id', id)
+    }
 
-  if (error) {
-    console.error('Error updating inventory item:', error)
+    // DETAILED DEBUGGING: Log everything about the status
+    console.log('=== INVENTORY UPDATE DEBUG ===')
+    console.log('Full updateData object:', JSON.stringify(updateData, null, 2))
+    console.log('updateData.status type:', typeof updateData.status)
+    console.log('updateData.status value:', updateData.status)
+
+    // Map status values to match database constraint exactly
+    if (updateData.status) {
+      console.log('Original status value:', updateData.status)
+
+      // Ensure we only use the exact values allowed by the constraint
+      const allowedStatuses = ['in_stock', 'low_stock', 'out_of_stock', 'expired']
+
+      if (!allowedStatuses.includes(updateData.status)) {
+        console.log('Invalid status value, mapping to valid one')
+        // Map common variations to valid values
+        const statusMapping = {
+          'in-stock': 'in_stock',
+          'low': 'low_stock',
+          'out-of-stock': 'out_of_stock',
+          'available': 'in_stock',
+          'unavailable': 'out_of_stock'
+        }
+        updateData.status = statusMapping[updateData.status] || 'in_stock'
+      }
+
+      console.log('Final status value:', updateData.status)
+      console.log('Final status type:', typeof updateData.status)
+    }
+
+    console.log('Final update data being sent:', JSON.stringify(updateData, null, 2))
+    console.log('=== END DEBUG ===')
+
+    // Try to update the inventory item
+    // If there's an ambiguous column reference error, it's likely due to a missing inventory_alerts table
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+
+    if (error) {
+      console.error('Error updating inventory item:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
+      console.error('Error details JSON:', JSON.stringify(error, null, 2))
+
+      // Handle specific RLS policy error
+      if (error.code === '42501' && error.message?.includes('row-level security policy')) {
+        console.error('❌ RLS POLICY ERROR: The trigger cannot create alerts due to row-level security.')
+        console.error('💡 SOLUTION: We\'ll handle alert creation in the application instead of the trigger.')
+      }
+
+      return false
+    }
+
+    if (!data || data.length === 0) {
+      console.error('No inventory item found with ID or access denied:', id)
+      return false
+    }
+
+    console.log('Inventory item updated successfully:', data)
+
+    // Handle alert creation manually since triggers have RLS issues
+    const updatedItem = data[0]
+    if (updatedItem.status === 'low_stock' || updatedItem.status === 'out_of_stock') {
+      console.log('Creating inventory alert for status:', updatedItem.status)
+
+      // Check if alert already exists
+      const { data: existingAlert } = await supabase
+        .from('inventory_alerts')
+        .select('id')
+        .eq('inventory_item_id', updatedItem.id)
+        .eq('alert_type', updatedItem.status)
+        .eq('is_resolved', false)
+        .single()
+
+      if (!existingAlert) {
+        // Create new alert
+        const alertMessage = updatedItem.status === 'out_of_stock'
+          ? `${updatedItem.name} is out of stock`
+          : `${updatedItem.name} is running low (${updatedItem.quantity} ${updatedItem.unit} remaining)`
+
+        const { error: alertError } = await supabase
+          .from('inventory_alerts')
+          .insert({
+            cafeteria_id: updatedItem.cafeteria_id,
+            inventory_item_id: updatedItem.id,
+            alert_type: updatedItem.status,
+            message: alertMessage,
+            is_resolved: false
+          })
+
+        if (alertError) {
+          console.error('Error creating inventory alert:', alertError)
+        } else {
+          console.log('✅ Inventory alert created successfully')
+        }
+      }
+    }
+
+    // Resolve alerts when status improves
+    if (updatedItem.status === 'in_stock') {
+      console.log('Resolving inventory alerts for improved status')
+
+      const { error: resolveError } = await supabase
+        .from('inventory_alerts')
+        .update({
+          is_resolved: true,
+          resolved_at: new Date().toISOString()
+        })
+        .eq('inventory_item_id', updatedItem.id)
+        .in('alert_type', ['low_stock', 'out_of_stock'])
+        .eq('is_resolved', false)
+
+      if (resolveError) {
+        console.error('Error resolving inventory alerts:', resolveError)
+      } else {
+        console.log('✅ Inventory alerts resolved successfully')
+      }
+    }
+
+    return true
+  } catch (err) {
+    console.error('Unexpected error updating inventory item:', err)
     return false
   }
-
-  return true
 }
 
 export const deleteInventoryItem = async (id: string): Promise<boolean> => {

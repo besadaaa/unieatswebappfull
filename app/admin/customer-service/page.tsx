@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Bell, CheckCircle, Clock, Search } from "lucide-react"
+import { Bell, CheckCircle, Clock, Search, RefreshCw } from "lucide-react"
+import { PageHeader } from "@/components/admin/page-header"
 // Removed problematic imports - using API instead
 
 // Define types for our messages
@@ -65,56 +66,82 @@ export default function CustomerServicePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [userTypeFilter, setUserTypeFilter] = useState("all")
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
 
   // Load messages from API
-  useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        console.log('Loading support tickets from API...')
+  const loadMessages = async () => {
+    try {
+      console.log('Loading support tickets from API...')
 
-        // Fetch all support tickets from our API endpoint
-        const response = await fetch('/api/support-tickets?status=all&userType=all&limit=100')
-        const data = await response.json()
+      // Fetch all support tickets from our API endpoint
+      const response = await fetch('/api/support-tickets?status=all&userType=all&limit=100')
+      const data = await response.json()
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch support tickets')
-        }
-
-        console.log('Fetched support tickets:', data.total)
-        console.log('Tickets by type:', {
-          total: data.total,
-          student: data.tickets?.filter((t: Message) => t.user.type === 'Student').length || 0,
-          cafeteria: data.tickets?.filter((t: Message) => t.user.type === 'Cafeteria').length || 0,
-          admin: data.tickets?.filter((t: Message) => t.user.type === 'Admin').length || 0,
-        })
-
-        // Add responses array for compatibility
-        const ticketsWithResponses = data.tickets?.map((ticket: Message) => ({
-          ...ticket,
-          responses: ticket.responses || []
-        })) || []
-
-        setMessages(ticketsWithResponses)
-        setFilteredMessages(ticketsWithResponses)
-
-        toast({
-          title: "Support tickets loaded",
-          description: `Loaded ${data.total} support tickets`,
-        })
-
-      } catch (error: any) {
-        console.error("Error loading messages:", error)
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load support tickets. Please try again.",
-          variant: "destructive",
-        })
-        setMessages([])
-        setFilteredMessages([])
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch support tickets')
       }
-    }
 
+      console.log('Fetched support tickets:', data.total)
+      console.log('Tickets by type:', {
+        total: data.total,
+        student: data.tickets?.filter((t: Message) => t.user.type === 'Student').length || 0,
+        cafeteria: data.tickets?.filter((t: Message) => t.user.type === 'Cafeteria').length || 0,
+        admin: data.tickets?.filter((t: Message) => t.user.type === 'Admin').length || 0,
+      })
+
+      // Add responses array for compatibility
+      const ticketsWithResponses = data.tickets?.map((ticket: Message) => ({
+        ...ticket,
+        responses: ticket.responses || []
+      })) || []
+
+      setMessages(ticketsWithResponses)
+      setFilteredMessages(ticketsWithResponses)
+
+      toast({
+        title: "Support tickets loaded",
+        description: `Loaded ${data.total} support tickets`,
+      })
+
+    } catch (error: any) {
+      console.error("Error loading messages:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load support tickets. Please try again.",
+        variant: "destructive",
+      })
+      setMessages([])
+      setFilteredMessages([])
+    }
+  }
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    toast({
+      title: "Refreshing tickets",
+      description: "Fetching the latest support tickets...",
+    })
+
+    try {
+      await loadMessages()
+      toast({
+        title: "Tickets refreshed",
+        description: "Support tickets have been updated with the latest information.",
+      })
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "There was an error refreshing your data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
     loadMessages()
 
     // Set up interval to check for new messages every 30 seconds
@@ -347,11 +374,12 @@ export default function CustomerServicePage() {
 
   return (
     <div className="p-6 animate-fade-in">
-      <div className="flex justify-between items-center mb-8 animate-slide-in-up">
-        <div>
-          <h1 className="text-3xl font-bold gradient-text animate-shimmer">Customer Service</h1>
-          <p className="text-slate-400 mt-2">Manage support tickets from cafeteria owners and students</p>
-        </div>
+      <PageHeader
+        title="Customer Service"
+        subtitle="Manage support tickets from cafeteria owners and students"
+      />
+
+      <div className="flex justify-end items-center mb-8 animate-slide-in-up">
         <div className="flex gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -363,6 +391,24 @@ export default function CustomerServicePage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <Button
+            variant="outline"
+            className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </>
+            )}
+          </Button>
           <div className="relative">
             <select
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"

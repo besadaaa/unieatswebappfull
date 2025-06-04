@@ -17,85 +17,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Search, Eye, Clock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Search, Eye, Clock, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { getOrders, updateOrderStatus as updateOrderStatusAPI } from "@/app/actions/orders"
 import { getCurrentUser, getCafeterias } from "@/lib/supabase"
 import { useEffect } from "react"
 import { OptimizedOrdersService, OptimizedOrder } from "@/lib/optimized-orders-service"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
-// Mock data for different order statuses
-const newOrders = [
-  {
-    id: "ORD-001",
-    customer: "Alex Johnson",
-    items: ["Veggie Wrap", "Iced Tea"],
-    total: "$12.99",
-    time: "2023-05-15T09:15:00",
-    status: "new",
-  },
-  {
-    id: "ORD-002",
-    customer: "Sarah Williams",
-    items: ["Chicken Salad", "Sparkling Water"],
-    total: "$15.50",
-    time: "2023-05-15T09:22:00",
-    status: "new",
-  },
-]
-
-const preparingOrders = [
-  {
-    id: "ORD-003",
-    customer: "Michael Brown",
-    items: ["Breakfast Burrito", "Coffee"],
-    total: "$10.99",
-    time: "2023-05-15T08:45:00",
-    status: "preparing",
-  },
-]
-
-const readyOrders = [
-  {
-    id: "ORD-004",
-    customer: "Emily Davis",
-    items: ["Caesar Salad", "Lemonade"],
-    total: "$13.50",
-    time: "2023-05-15T08:30:00",
-    status: "ready",
-  },
-]
-
-const completedOrders = [
-  {
-    id: "ORD-005",
-    customer: "David Wilson",
-    items: ["Turkey Sandwich", "Chips", "Soda"],
-    total: "$16.99",
-    time: "2023-05-15T08:00:00",
-    status: "completed",
-  },
-  {
-    id: "ORD-006",
-    customer: "Jessica Martinez",
-    items: ["Fruit Bowl", "Green Tea"],
-    total: "$9.50",
-    time: "2023-05-15T07:45:00",
-    status: "completed",
-  },
-]
-
-const cancelledOrders = [
-  {
-    id: "ORD-007",
-    customer: "Robert Taylor",
-    items: ["Veggie Burger", "Fries", "Milkshake"],
-    total: "$18.99",
-    time: "2023-05-15T09:05:00",
-    status: "cancelled",
-    reason: "Customer requested cancellation",
-  },
-]
+// Orders are fetched from Supabase using OptimizedOrdersService
 
 // Helper function to format date
 function formatDate(dateString: string) {
@@ -125,9 +55,12 @@ function timeSince(dateString: string) {
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false)
   const [activeTab, setActiveTab] = useState("new")
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [sortField, setSortField] = useState<'created_at' | 'pickup_time' | 'total_amount' | 'status'>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [cafeteriaId, setCafeteriaId] = useState<string>("")
@@ -283,11 +216,11 @@ export default function OrdersPage() {
       console.log(`Orders loaded in ${loadTime}ms`)
 
       setOrders({
-        new: newOrders.orders,
-        preparing: preparingOrders.orders,
-        ready: readyOrders.orders,
-        completed: completedOrders.orders,
-        cancelled: cancelledOrders.orders,
+        new: newOrders?.orders || [],
+        preparing: preparingOrders?.orders || [],
+        ready: readyOrders?.orders || [],
+        completed: completedOrders?.orders || [],
+        cancelled: cancelledOrders?.orders || [],
       })
 
       setOrderCounts(counts)
@@ -344,10 +277,61 @@ export default function OrdersPage() {
     }
   }
 
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    toast({
+      title: "Refreshing orders",
+      description: "Clearing cache and fetching the latest order data...",
+    })
+
+    try {
+      // Clear all caches to force fresh data
+      OptimizedOrdersService.clearAllCaches()
+
+      if (cafeteriaId) {
+        await loadOrdersOptimized(cafeteriaId)
+        toast({
+          title: "Orders refreshed",
+          description: "Order data has been updated with the latest information.",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "There was an error refreshing your data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Fetch full order details for the dialog
+  const fetchOrderDetails = async (orderId: string) => {
+    try {
+      setLoadingOrderDetails(true)
+      const details = await OptimizedOrdersService.getOrderDetails(orderId)
+      setSelectedOrderDetails(details)
+    } catch (error) {
+      console.error('Error fetching order details:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load order details.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingOrderDetails(false)
+    }
+  }
+
   // Sort orders based on selected field and direction
-  const sortOrders = (ordersList: any[]) => {
+  const sortOrders = (ordersList: OptimizedOrder[]) => {
+    if (!ordersList || !Array.isArray(ordersList)) {
+      return []
+    }
     return [...ordersList].sort((a, b) => {
-      let aValue, bValue
+      let aValue: any, bValue: any
 
       switch (sortField) {
         case 'created_at':
@@ -359,8 +343,8 @@ export default function OrdersPage() {
           bValue = b.pickup_time ? new Date(b.pickup_time).getTime() : 0
           break
         case 'total_amount':
-          aValue = a.total_amount
-          bValue = b.total_amount
+          aValue = parseFloat(a.total_amount.toString())
+          bValue = parseFloat(b.total_amount.toString())
           break
         case 'status':
           aValue = a.status
@@ -380,6 +364,9 @@ export default function OrdersPage() {
 
   // Filter orders based on search query
   const filterOrders = (ordersList: OptimizedOrder[]) => {
+    if (!ordersList || !Array.isArray(ordersList)) {
+      return []
+    }
     if (!searchQuery) return ordersList
 
     return ordersList.filter(
@@ -410,7 +397,35 @@ export default function OrdersPage() {
   }
 
   // Render order table for a specific status
-  const renderOrderTable = (ordersList: any[]) => {
+  const renderOrderTable = (ordersList: OptimizedOrder[]) => {
+    // Add safety check for ordersList
+    if (!ordersList || !Array.isArray(ordersList)) {
+      return (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order ID</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Order Time</TableHead>
+                <TableHead>Pickup Time</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                  Loading orders...
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      )
+    }
+
     const filteredOrders = filterOrders(ordersList)
     const sortedOrders = sortOrders(filteredOrders)
 
@@ -484,9 +499,10 @@ export default function OrdersPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
+                        onClick={async () => {
                           setSelectedOrder(order)
                           setViewDialogOpen(true)
+                          await fetchOrderDetails(order.id)
                         }}
                       >
                         <Eye className="h-4 w-4" />
@@ -531,13 +547,35 @@ export default function OrdersPage() {
   return (
     <div className="flex-1 p-6 space-y-8 animate-fade-in">
       <div className="space-y-8">
-        <div className="flex justify-between items-center animate-slide-in-up">
-          <h1 className="text-3xl font-bold gradient-text animate-shimmer">Order Management</h1>
+        <CafeteriaPageHeader
+          title="Order Management"
+          subtitle="Manage and track all incoming orders"
+        />
+
+        <div className="flex justify-end items-center animate-slide-in-up">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-slate-400 glass-effect px-3 py-2 rounded-lg border border-white/20">
               <ArrowUpDown className="h-4 w-4" />
               <span>Sort by: {sortField.replace('_', ' ')} ({sortDirection})</span>
             </div>
+            <Button
+              variant="outline"
+              className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </>
+              )}
+            </Button>
             <form onSubmit={handleSearch} className="relative w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
               <Input
@@ -554,63 +592,172 @@ export default function OrdersPage() {
           <TabsList className="grid w-full grid-cols-5 glass-effect border border-white/20 p-1 h-auto rounded-xl">
             <TabsTrigger value="new" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">
               New
-              <Badge className="ml-2 bg-blue-500 text-white animate-pulse">{orders.new.length}</Badge>
+              <Badge className="ml-2 bg-blue-500 text-white animate-pulse">{orders.new?.length || 0}</Badge>
             </TabsTrigger>
             <TabsTrigger value="preparing" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">
               Preparing
-              <Badge className="ml-2 bg-amber-500 text-white animate-pulse">{orders.preparing.length}</Badge>
+              <Badge className="ml-2 bg-amber-500 text-white animate-pulse">{orders.preparing?.length || 0}</Badge>
             </TabsTrigger>
             <TabsTrigger value="ready" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">
               Ready
-              <Badge className="ml-2 bg-emerald-500 text-white animate-pulse">{orders.ready.length}</Badge>
+              <Badge className="ml-2 bg-emerald-500 text-white animate-pulse">{orders.ready?.length || 0}</Badge>
             </TabsTrigger>
             <TabsTrigger value="completed" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-500 data-[state=active]:to-gray-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">
               Completed
-              <Badge className="ml-2 bg-slate-500 text-white animate-pulse">{orders.completed.length}</Badge>
+              <Badge className="ml-2 bg-slate-500 text-white animate-pulse">{orders.completed?.length || 0}</Badge>
             </TabsTrigger>
             <TabsTrigger value="cancelled" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">
               Cancelled
-              <Badge className="ml-2 bg-red-500 text-white animate-pulse">{orders.cancelled.length}</Badge>
+              <Badge className="ml-2 bg-red-500 text-white animate-pulse">{orders.cancelled?.length || 0}</Badge>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="new" className="mt-4">
-            {renderOrderTable(orders.new)}
+            {renderOrderTable(orders.new || [])}
           </TabsContent>
 
           <TabsContent value="preparing" className="mt-4">
-            {renderOrderTable(orders.preparing)}
+            {renderOrderTable(orders.preparing || [])}
           </TabsContent>
 
           <TabsContent value="ready" className="mt-4">
-            {renderOrderTable(orders.ready)}
+            {renderOrderTable(orders.ready || [])}
           </TabsContent>
 
           <TabsContent value="completed" className="mt-4">
-            {renderOrderTable(orders.completed)}
+            {renderOrderTable(orders.completed || [])}
           </TabsContent>
 
           <TabsContent value="cancelled" className="mt-4">
-            {renderOrderTable(orders.cancelled)}
+            {renderOrderTable(orders.cancelled || [])}
           </TabsContent>
         </Tabs>
       </div>
 
       {/* Order Details Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+      <Dialog open={viewDialogOpen} onOpenChange={(open) => {
+        setViewDialogOpen(open)
+        if (!open) {
+          setSelectedOrderDetails(null)
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>
-              {selectedOrder && `Order ${selectedOrder.id} placed by ${selectedOrder.customer}`}
+              {selectedOrder && `Order ${selectedOrder.id} placed by ${selectedOrder.customer_name}`}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedOrder && (
+          {loadingOrderDetails ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading order details...</span>
+            </div>
+          ) : selectedOrderDetails ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+                  <Badge
+                    className={`mt-1 ${
+                      selectedOrderDetails.status === "new"
+                        ? "bg-blue-500"
+                        : selectedOrderDetails.status === "preparing"
+                          ? "bg-yellow-500"
+                          : selectedOrderDetails.status === "ready"
+                            ? "bg-green-500"
+                            : selectedOrderDetails.status === "completed"
+                              ? "bg-gray-500"
+                              : "bg-red-500"
+                    }`}
+                  >
+                    {selectedOrderDetails.status.charAt(0).toUpperCase() + selectedOrderDetails.status.slice(1)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Placed</p>
+                  <p className="mt-1">{formatDate(selectedOrderDetails.created_at)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Time</p>
+                  <div className="flex items-center mt-1">
+                    <Clock className="mr-1 h-4 w-4 text-blue-500" />
+                    <span className="font-medium text-blue-600">
+                      {selectedOrderDetails.pickup_time ? formatDate(selectedOrderDetails.pickup_time) : 'ASAP'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
+                  <p className="mt-1 font-medium">{selectedOrderDetails.total_amount.toFixed(2)} EGP</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Customer</p>
+                <div className="mt-1">
+                  <p className="text-sm font-medium">{selectedOrderDetails.customer_details.full_name}</p>
+                  {selectedOrderDetails.customer_details.email && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{selectedOrderDetails.customer_details.email}</p>
+                  )}
+                  {selectedOrderDetails.customer_details.phone && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{selectedOrderDetails.customer_details.phone}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Items</p>
+                <ul className="mt-1 space-y-2">
+                  {selectedOrderDetails.order_items && selectedOrderDetails.order_items.length > 0 ? (
+                    selectedOrderDetails.order_items.map((item: any, index: number) => (
+                      <li key={index} className="text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{item.quantity}x {item.menu_item_name}</span>
+                              <span className="text-gray-500 dark:text-gray-400">@ {item.price.toFixed(2)} EGP each</span>
+                            </div>
+                            {item.notes && (
+                              <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-4 border-blue-400">
+                                <div className="flex items-start gap-2">
+                                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  <div>
+                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Special Instructions:</p>
+                                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{item.notes}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <span className="font-medium text-right ml-4">{item.total.toFixed(2)} EGP</span>
+                        </div>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-gray-400 dark:text-gray-500">No items available</li>
+                  )}
+                </ul>
+              </div>
+
+              {selectedOrderDetails.status === "cancelled" && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Cancellation Reason</p>
+                  <p className="mt-1 text-sm">{selectedOrderDetails.reason || "No reason provided"}</p>
+                </div>
+              )}
+            </div>
+          ) : selectedOrder ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
                   <Badge
                     className={`mt-1 ${
                       selectedOrder.status === "new"
@@ -628,49 +775,39 @@ export default function OrdersPage() {
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Time Placed</p>
-                  <p className="mt-1">{formatDate(selectedOrder.time)}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Placed</p>
+                  <p className="mt-1">{formatDate(selectedOrder.created_at)}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Pickup Time</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Time</p>
                   <div className="flex items-center mt-1">
                     <Clock className="mr-1 h-4 w-4 text-blue-500" />
                     <span className="font-medium text-blue-600">
-                      {selectedOrder.pickup_time_formatted || 'ASAP'}
+                      {selectedOrder.pickup_time ? formatDate(selectedOrder.pickup_time) : 'ASAP'}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Total</p>
-                  <p className="mt-1 font-medium">{selectedOrder.total}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
+                  <p className="mt-1 font-medium">{selectedOrder.total_amount.toFixed(2)} EGP</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-500">Items</p>
-                <ul className="mt-1 space-y-1">
-                  {selectedOrder.items.map((item: string, index: number) => (
-                    <li key={index} className="text-sm">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Items Summary</p>
+                <p className="mt-1 text-sm">{selectedOrder.items_summary}</p>
               </div>
-
-              {selectedOrder.status === "cancelled" && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Cancellation Reason</p>
-                  <p className="mt-1 text-sm">{selectedOrder.reason || "No reason provided"}</p>
-                </div>
-              )}
             </div>
-          )}
+          ) : null}
 
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setViewDialogOpen(false)
+              setSelectedOrderDetails(null)
+            }}>
               Close
             </Button>
 
@@ -679,6 +816,7 @@ export default function OrdersPage() {
                 onClick={() => {
                   updateOrderStatus(selectedOrder.id, "preparing")
                   setViewDialogOpen(false)
+                  setSelectedOrderDetails(null)
                 }}
               >
                 Start Preparing
@@ -690,6 +828,7 @@ export default function OrdersPage() {
                 onClick={() => {
                   updateOrderStatus(selectedOrder.id, "ready")
                   setViewDialogOpen(false)
+                  setSelectedOrderDetails(null)
                 }}
               >
                 Mark as Ready
@@ -701,6 +840,7 @@ export default function OrdersPage() {
                 onClick={() => {
                   updateOrderStatus(selectedOrder.id, "completed")
                   setViewDialogOpen(false)
+                  setSelectedOrderDetails(null)
                 }}
               >
                 Complete Order

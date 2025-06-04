@@ -4,9 +4,12 @@ import { useState, useEffect } from "react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
+import { RefreshCw } from "lucide-react"
 import Image from "next/image"
+import { PageHeader } from "@/components/admin/page-header"
 
 interface OrderData {
   id: string
@@ -53,6 +56,7 @@ interface OrderCounts {
 export default function OrderInsights() {
   const [activeTab, setActiveTab] = useState("active")
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [orderData, setOrderData] = useState<{
     active: OrderData[]
     completed: OrderData[]
@@ -70,62 +74,87 @@ export default function OrderInsights() {
   const { toast } = useToast()
 
   // Load orders from API
-  useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        setLoading(true)
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
 
-        // Fetch orders from our API endpoint
-        const response = await fetch('/api/orders?status=all&limit=100')
-        const data = await response.json()
+      // Fetch orders from our API endpoint
+      const response = await fetch('/api/orders?status=all&limit=100')
+      const data = await response.json()
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch orders')
-        }
-
-        // Categorize orders by status
-        const activeOrders = data.orders?.filter((order: OrderData) =>
-          order.status.category === 'active'
-        ) || []
-
-        const completedOrders = data.orders?.filter((order: OrderData) =>
-          order.status.category === 'completed'
-        ) || []
-
-        const canceledOrders = data.orders?.filter((order: OrderData) =>
-          order.status.category === 'cancelled'
-        ) || []
-
-        setOrderData({
-          active: activeOrders,
-          completed: completedOrders,
-          canceled: canceledOrders
-        })
-
-        // Use counts from API if available, otherwise calculate
-        setOrderCounts({
-          active: data.counts?.active || activeOrders.length,
-          completed: data.counts?.completed || completedOrders.length,
-          canceled: data.counts?.cancelled || canceledOrders.length
-        })
-
-        toast({
-          title: "Orders loaded",
-          description: `Loaded ${data.total} orders from database`,
-        })
-
-      } catch (error: any) {
-        console.error('Error loading orders:', error)
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load order data. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch orders')
       }
-    }
 
+      // Categorize orders by status
+      const activeOrders = data.orders?.filter((order: OrderData) =>
+        order.status.category === 'active'
+      ) || []
+
+      const completedOrders = data.orders?.filter((order: OrderData) =>
+        order.status.category === 'completed'
+      ) || []
+
+      const canceledOrders = data.orders?.filter((order: OrderData) =>
+        order.status.category === 'cancelled'
+      ) || []
+
+      setOrderData({
+        active: activeOrders,
+        completed: completedOrders,
+        canceled: canceledOrders
+      })
+
+      // Use counts from API if available, otherwise calculate
+      setOrderCounts({
+        active: data.counts?.active || activeOrders.length,
+        completed: data.counts?.completed || completedOrders.length,
+        canceled: data.counts?.cancelled || canceledOrders.length
+      })
+
+      toast({
+        title: "Orders loaded",
+        description: `Loaded ${data.total} orders from database`,
+      })
+
+    } catch (error: any) {
+      console.error('Error loading orders:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load order data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    toast({
+      title: "Refreshing orders",
+      description: "Fetching the latest order data...",
+    })
+
+    try {
+      await loadOrders()
+      toast({
+        title: "Orders refreshed",
+        description: "Order data has been updated with the latest information.",
+      })
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "There was an error refreshing your data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
     loadOrders()
   }, [])
 
@@ -144,12 +173,33 @@ export default function OrderInsights() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <Card className="modern-card glass-effect hover-lift">
-          <CardContent className="p-8 relative">
-            <div className="mb-8 animate-slide-in-up">
-              <h2 className="text-2xl font-bold gradient-text animate-shimmer">Order Insights</h2>
-              <p className="text-sm text-slate-400 mt-2">Track and manage all orders across cafeterias</p>
-            </div>
+      <PageHeader
+        title="Order Insights"
+        subtitle="Track and manage all orders across cafeterias"
+      />
+
+      <Card className="modern-card glass-effect hover-lift">
+        <CardContent className="p-8 relative">
+          <div className="mb-8 animate-slide-in-up flex justify-end items-center">
+            <Button
+              variant="outline"
+              className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </>
+              )}
+            </Button>
+          </div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-full blur-2xl"></div>
 
             <div className="flex justify-end mb-8 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>

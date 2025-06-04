@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import type { MenuItem } from '@/lib/supabase'
 import { MenuItemService, CompleteMenuItem } from '@/lib/menu-item-service'
 
-// Load menu items from Supabase
+// Load menu items from Supabase with ratings
 export const getMenuItems = async (cafeteriaId?: string): Promise<MenuItem[]> => {
   try {
     let query = supabase
@@ -17,14 +17,49 @@ export const getMenuItems = async (cafeteriaId?: string): Promise<MenuItem[]> =>
       query = query.eq('cafeteria_id', cafeteriaId)
     }
 
-    const { data, error } = await query
+    const { data: menuItems, error } = await query
 
     if (error) {
       console.error('Error fetching menu items:', error)
       return []
     }
 
-    return data || []
+    if (!menuItems) return []
+
+    // Fetch ratings for all menu items
+    const menuItemIds = menuItems.map(item => item.id)
+    const { data: ratings, error: ratingsError } = await supabase
+      .from('menu_item_ratings')
+      .select('menu_item_id, rating')
+      .in('menu_item_id', menuItemIds)
+
+    if (ratingsError) {
+      console.error('Error fetching ratings:', ratingsError)
+      // Continue without ratings
+    }
+
+    // Calculate average ratings for each menu item
+    const ratingsMap: { [key: string]: { total: number, count: number } } = {}
+
+    ratings?.forEach(rating => {
+      const itemId = rating.menu_item_id
+      if (!ratingsMap[itemId]) {
+        ratingsMap[itemId] = { total: 0, count: 0 }
+      }
+      ratingsMap[itemId].total += rating.rating
+      ratingsMap[itemId].count += 1
+    })
+
+    // Add rating information to menu items
+    const menuItemsWithRatings = menuItems.map(item => ({
+      ...item,
+      rating: ratingsMap[item.id]
+        ? Number((ratingsMap[item.id].total / ratingsMap[item.id].count).toFixed(1))
+        : 0,
+      totalRatings: ratingsMap[item.id]?.count || 0
+    }))
+
+    return menuItemsWithRatings
   } catch (error) {
     console.error('Error fetching menu items:', error)
     return []

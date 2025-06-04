@@ -10,6 +10,7 @@ import { Search, Calendar, User } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
+import { PageHeader } from "@/components/admin/page-header"
 
 // Types for audit log data
 interface AuditLog {
@@ -189,13 +190,14 @@ export default function AuditLogs() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <Card className="modern-card glass-effect hover-lift">
-          <CardContent className="p-8 relative">
-            <div className="mb-8 animate-slide-in-up">
-              <h2 className="text-2xl font-bold gradient-text animate-shimmer">Audit Log Filters</h2>
-              <p className="text-sm text-slate-400 mt-2">Filter logs by various criteria</p>
-            </div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-2xl"></div>
+      <PageHeader
+        title="Audit Logs"
+        subtitle="Monitor system activities and security events"
+      />
+
+      <Card className="modern-card glass-effect hover-lift">
+        <CardContent className="p-8 relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-2xl"></div>
 
             <div className="flex flex-col md:flex-row gap-4 mb-8 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
               <div className="relative flex-1">

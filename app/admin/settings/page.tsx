@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Save, Globe, Bell, Shield, CreditCard, Mail, Users, Clock } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { PageHeader } from "@/components/admin/page-header"
+import { PageHeader } from "@/components/admin/page-header"
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general")

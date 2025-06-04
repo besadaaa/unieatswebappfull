@@ -37,6 +37,7 @@ import { exportChartsAsPDF, exportChartDataAsExcel } from "@/lib/chart-export-ut
 import { supabase } from "@/lib/supabase"
 import { CHART_COLORS, PIE_CHART_COLORS, BAR_CHART_COLORS, useChartColors } from "@/lib/chart-colors"
 import { format } from "date-fns"
+import { PageHeader } from "@/components/admin/page-header"
 
 export default function AnalyticsPage() {
   // Get theme-aware colors
@@ -139,7 +140,7 @@ export default function AnalyticsPage() {
       const startDate = dateFilter?.from ? dateFilter.from.toISOString().split('T')[0] : null
       const endDate = dateFilter?.to ? dateFilter.to.toISOString().split('T')[0] : null
 
-      // Fetch orders data for the selected date range
+      // Fetch orders data for the selected date range (exclude cancelled orders)
       let ordersQuery = supabase
         .from('orders')
         .select(`
@@ -148,6 +149,7 @@ export default function AnalyticsPage() {
           created_at,
           updated_at,
           total_amount,
+          admin_revenue,
           status,
           rating,
           order_items(
@@ -156,6 +158,7 @@ export default function AnalyticsPage() {
             item_id
           )
         `)
+        .neq('status', 'cancelled')
         .order('created_at', { ascending: true })
 
       if (startDate) ordersQuery = ordersQuery.gte('created_at', startDate)
@@ -165,14 +168,22 @@ export default function AnalyticsPage() {
 
       if (ordersError) throw ordersError
 
-      // Fetch menu items separately to avoid relationship issues
+      // Fetch menu items and cafeterias separately to avoid relationship issues
       const { data: menuItems } = await supabase
         .from('menu_items')
         .select('id, name, price, category, cafeteria_id')
 
-      // Create a map for quick lookup
+      const { data: cafeterias } = await supabase
+        .from('cafeterias')
+        .select('id, name')
+
+      // Create maps for quick lookup
       const menuItemsMap = menuItems ? Object.fromEntries(
         menuItems.map(item => [item.id, item])
+      ) : {}
+
+      const cafeteriasMap = cafeterias ? Object.fromEntries(
+        cafeterias.map(caf => [caf.id, caf])
       ) : {}
 
       // Process orders data for charts
@@ -187,7 +198,7 @@ export default function AnalyticsPage() {
           }
           const dayData = dateMap.get(date)!
           dayData.orders += 1
-          dayData.revenue += order.total_amount || 0
+          dayData.revenue += parseFloat(order.admin_revenue) || 0
           dayData.users.add(order.id) // Using order ID as proxy for user activity
         })
 
@@ -203,32 +214,53 @@ export default function AnalyticsPage() {
         setUserActivityData(newUserActivityData)
         setLabels(newLabels)
 
-        // Calculate popular menu items
-        const itemCounts: Record<string, number> = {}
+        // Calculate popular menu items with cafeteria names
+        const itemCounts: Record<string, { count: number, cafeteriaName: string }> = {}
         orders.forEach(order => {
           order.order_items?.forEach((item: any) => {
-            if (item.menu_items?.name) {
-              itemCounts[item.menu_items.name] = (itemCounts[item.menu_items.name] || 0) + item.quantity
+            if (item.item_id && menuItemsMap[item.item_id]) {
+              const menuItem = menuItemsMap[item.item_id]
+              const cafeteria = cafeteriasMap[menuItem.cafeteria_id]
+              const itemKey = `${menuItem.name} (${cafeteria?.name || 'Unknown Cafeteria'})`
+
+              if (!itemCounts[itemKey]) {
+                itemCounts[itemKey] = { count: 0, cafeteriaName: cafeteria?.name || 'Unknown' }
+              }
+              itemCounts[itemKey].count += item.quantity
             }
           })
         })
 
         const sortedItems = Object.entries(itemCounts)
-          .sort(([,a], [,b]) => b - a)
+          .sort(([,a], [,b]) => b.count - a.count)
           .slice(0, 5)
 
         setPopularItemsLabels(sortedItems.map(([name]) => name))
-        setPopularItemsData(sortedItems.map(([,count]) => count))
+        setPopularItemsData(sortedItems.map(([,data]) => data.count))
 
         // Calculate peak hours
-        const hourCounts = new Array(8).fill(0) // 8 time slots
+        const hourCounts = new Array(8).fill(0) // 8 time slots: 8AM-10AM, 10AM-12PM, 12PM-2PM, 2PM-4PM, 4PM-6PM, 6PM-8PM, 8PM-10PM, 10PM-12AM
+
         orders.forEach(order => {
-          const hour = new Date(order.created_at).getHours()
-          const slotIndex = Math.floor((hour - 8) / 2)
+          const orderDate = new Date(order.created_at)
+          const hour = orderDate.getHours()
+
+          // Map hours to slots: 8-9=0, 10-11=1, 12-13=2, 14-15=3, 16-17=4, 18-19=5, 20-21=6, 22-23=7
+          let slotIndex = -1
+          if (hour >= 8 && hour < 10) slotIndex = 0      // 8AM-10AM
+          else if (hour >= 10 && hour < 12) slotIndex = 1 // 10AM-12PM
+          else if (hour >= 12 && hour < 14) slotIndex = 2 // 12PM-2PM
+          else if (hour >= 14 && hour < 16) slotIndex = 3 // 2PM-4PM
+          else if (hour >= 16 && hour < 18) slotIndex = 4 // 4PM-6PM
+          else if (hour >= 18 && hour < 20) slotIndex = 5 // 6PM-8PM
+          else if (hour >= 20 && hour < 22) slotIndex = 6 // 8PM-10PM
+          else if (hour >= 22 || hour < 2) slotIndex = 7  // 10PM-12AM (including late night)
+
           if (slotIndex >= 0 && slotIndex < 8) {
             hourCounts[slotIndex]++
           }
         })
+
         setPeakHoursData(hourCounts)
 
         // Calculate customer satisfaction from ratings
@@ -248,11 +280,11 @@ export default function AnalyticsPage() {
           setCustomerSatisfactionData([0, 0, 0])
         }
 
-        // Calculate Average Order Value by day
+        // Calculate Average Order Value by day (using total order amount customers pay)
         const avgOrderValueByDay = sortedDates.map(date => {
           const dayOrders = orders.filter(order => order.created_at.split('T')[0] === date)
           if (dayOrders.length === 0) return 0
-          const totalValue = dayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+          const totalValue = dayOrders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0)
           return Math.round(totalValue / dayOrders.length)
         })
         setAverageOrderValueData(avgOrderValueByDay)
@@ -278,28 +310,48 @@ export default function AnalyticsPage() {
         const completionRate = totalOrders > 0 ? (completedOrdersCount / totalOrders) * 100 : 0
         setOrderCompletionRate(Math.round(completionRate * 10) / 10) // Round to 1 decimal
 
-        // Calculate New vs Returning Customers
-        const userOrderCounts: Record<string, number> = {}
-        orders.forEach(order => {
-          if (order.user_id) {
-            userOrderCounts[order.user_id] = (userOrderCounts[order.user_id] || 0) + 1
+        // Calculate New vs Returning Customers (improved logic)
+        const uniqueUsersInPeriod = [...new Set(orders.map(order => order.user_id).filter(Boolean))]
+
+        // For each user in the period, check if they are new or returning
+        let newCustomersCount = 0
+        let returningCustomersCount = 0
+
+        for (const userId of uniqueUsersInPeriod) {
+          // Count orders for this user in the current period
+          const userOrdersInPeriod = orders.filter(order => order.user_id === userId).length
+
+          // Check if user had any orders before the start of our date range
+          const { data: previousOrders } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('user_id', userId)
+            .neq('status', 'cancelled')
+            .lt('created_at', startDate)
+            .limit(1)
+
+          // User is returning if they have multiple orders in period OR had previous orders
+          if ((previousOrders && previousOrders.length > 0) || userOrdersInPeriod > 1) {
+            returningCustomersCount++
+          } else {
+            newCustomersCount++
           }
-        })
-        const newCustomers = Object.values(userOrderCounts).filter(count => count === 1).length
-        const returningCustomers = Object.values(userOrderCounts).filter(count => count > 1).length
-        const totalCustomers = newCustomers + returningCustomers
+        }
 
-        setNewCustomersCount(newCustomers)
-        setReturningCustomersRate(totalCustomers > 0 ? Math.round((returningCustomers / totalCustomers) * 100) : 0)
+        setNewCustomersCount(newCustomersCount)
+        const totalCustomers = newCustomersCount + returningCustomersCount
+        setReturningCustomersRate(totalCustomers > 0 ? Math.round((returningCustomersCount / totalCustomers) * 100) : 0)
 
-        // Calculate Top Selling Items (different from popular items - by revenue)
+        // Calculate Top Selling Items (by revenue) with cafeteria names
         const itemRevenue: Record<string, number> = {}
         orders.forEach(order => {
           order.order_items?.forEach((item: any) => {
             if (item.item_id && menuItemsMap[item.item_id]) {
               const menuItem = menuItemsMap[item.item_id]
+              const cafeteria = cafeteriasMap[menuItem.cafeteria_id]
+              const itemKey = `${menuItem.name} (${cafeteria?.name || 'Unknown Cafeteria'})`
               const revenue = (item.price || menuItem.price || 0) * item.quantity
-              itemRevenue[menuItem.name] = (itemRevenue[menuItem.name] || 0) + revenue
+              itemRevenue[itemKey] = (itemRevenue[itemKey] || 0) + revenue
             }
           })
         })
@@ -311,18 +363,20 @@ export default function AnalyticsPage() {
         setTopSellingItemsLabels(sortedItemsByRevenue.map(([name]) => name))
         setTopSellingItemsData(sortedItemsByRevenue.map(([,revenue]) => Math.round(revenue)))
 
-        // Calculate Item Ratings (average rating per item)
+        // Calculate Item Ratings (average rating per item) with cafeteria names
         const itemRatings: Record<string, { total: number, count: number }> = {}
         orders.forEach(order => {
           if (order.rating && order.order_items) {
             order.order_items.forEach((item: any) => {
               if (item.item_id && menuItemsMap[item.item_id]) {
-                const itemName = menuItemsMap[item.item_id].name
-                if (!itemRatings[itemName]) {
-                  itemRatings[itemName] = { total: 0, count: 0 }
+                const menuItem = menuItemsMap[item.item_id]
+                const cafeteria = cafeteriasMap[menuItem.cafeteria_id]
+                const itemKey = `${menuItem.name} (${cafeteria?.name || 'Unknown Cafeteria'})`
+                if (!itemRatings[itemKey]) {
+                  itemRatings[itemKey] = { total: 0, count: 0 }
                 }
-                itemRatings[itemName].total += order.rating
-                itemRatings[itemName].count += 1
+                itemRatings[itemKey].total += order.rating
+                itemRatings[itemKey].count += 1
               }
             })
           }
@@ -469,7 +523,8 @@ export default function AnalyticsPage() {
 
       let ordersQuery = supabase
         .from('orders')
-        .select('id, created_at, total_amount')
+        .select('id, created_at, total_amount, admin_revenue')
+        .neq('status', 'cancelled')
         .order('created_at', { ascending: true })
 
       if (startDate) ordersQuery = ordersQuery.gte('created_at', startDate)
@@ -487,7 +542,7 @@ export default function AnalyticsPage() {
           }
           const dayData = dateMap.get(date)!
           dayData.orders += 1
-          dayData.revenue += order.total_amount || 0
+          dayData.revenue += parseFloat(order.admin_revenue) || 0
           dayData.users.add(order.id)
         })
 
@@ -615,9 +670,12 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-slide-in-up">
-        <h1 className="text-3xl font-bold gradient-text animate-shimmer">Analytics Dashboard</h1>
+      <PageHeader
+        title="Analytics Dashboard"
+        subtitle="Comprehensive insights into your platform's performance"
+      />
 
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-slide-in-up">
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} className="w-full md:w-auto glass-effect border-white/20 hover:border-blue-500/50 btn-modern" />
 
@@ -814,7 +872,7 @@ export default function AnalyticsPage() {
                 />
                 <TrendChart
                   title="Revenue"
-                  description="Daily revenue in USD with forecast"
+                  description="Daily revenue in EGP with forecast"
                   data={revenueData}
                   labels={labels}
                   forecastPeriods={7}
@@ -855,7 +913,7 @@ export default function AnalyticsPage() {
                 />
                 <ComparisonChart
                   title="Revenue"
-                  description="Daily revenue in USD"
+                  description="Daily revenue in EGP"
                   currentData={revenueData}
                   previousData={comparisonRevenueData}
                   labels={labels}
@@ -901,7 +959,7 @@ export default function AnalyticsPage() {
                 <div className="chart-container chart-slide-up">
                   <Charts
                     title="Revenue"
-                    description="Daily revenue in USD"
+                    description="Daily revenue in EGP"
                     type="bar"
                     data={revenueData}
                     labels={labels}

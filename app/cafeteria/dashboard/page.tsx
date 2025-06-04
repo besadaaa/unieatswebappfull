@@ -8,9 +8,40 @@ import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
 import { formatCurrency } from "@/lib/currency"
-import { DashboardService, DashboardMetrics, ChartData } from "@/lib/dashboard-service"
+import { supabase } from "@/lib/supabase"
+
+// Types for dashboard data
+interface DashboardMetrics {
+  todayOrders: number
+  todayRevenue: number
+  todayCustomers: number
+  totalMenuItems: number
+  weeklyOrders: number
+  weeklyRevenue: number
+  monthlyOrders: number
+  monthlyRevenue: number
+  totalOrders: number
+  totalRevenue: number
+  averageOrderValue: number
+  topSellingItems: Array<{
+    name: string
+    orders: number
+    revenue: number
+  }>
+}
+
+interface ChartData {
+  revenue: number[]
+  orders: number[]
+  customers: number[]
+  months: string[]
+  dailyRevenue: number[]
+  dailyOrders: number[]
+  days: string[]
+}
 import {
   Calendar,
   ChevronDown,
@@ -59,33 +90,91 @@ export default function CafeteriaDashboard() {
   // Fetch dashboard data from Supabase
   const fetchDashboardData = async () => {
     try {
+      console.log('🚀 Starting fetchDashboardData...')
       setIsLoading(true)
       setError(null)
 
-      // Get cafeteria ID if not already set
-      let currentCafeteriaId = cafeteriaId
-      if (!currentCafeteriaId) {
-        currentCafeteriaId = await DashboardService.getCurrentCafeteriaId()
-        if (!currentCafeteriaId) {
-          setError("No cafeteria found for this user")
-          return
-        }
-        setCafeteriaId(currentCafeteriaId)
+      // ALWAYS get cafeteria ID from the current logged-in user (don't trust cached state)
+      console.log('🔍 Getting cafeteria ID from current user...')
+
+      // Get current user's cafeteria ID
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('❌ Authentication error:', authError)
+        throw new Error('Please sign in to access your cafeteria dashboard')
       }
 
-      console.log("Fetching dashboard data for cafeteria:", currentCafeteriaId, "Time range:", timeRange)
+      console.log('✅ User authenticated:', user.email)
 
-      // Fetch real metrics and chart data
-      const [metrics, chartDataResult] = await Promise.all([
-        DashboardService.getDashboardMetrics(currentCafeteriaId, timeRange),
-        DashboardService.getChartData(currentCafeteriaId, timeRange)
-      ])
+      // Get cafeteria owned by this user
+      const { data: cafeteria, error: cafeteriaError } = await supabase
+        .from('cafeterias')
+        .select('id, name, owner_id')
+        .eq('owner_id', user.id)
+        .single()
 
-      console.log("Dashboard metrics:", metrics)
-      console.log("Chart data:", chartDataResult)
+      if (cafeteriaError || !cafeteria) {
+        console.error('❌ No cafeteria found for user:', cafeteriaError)
+        throw new Error('No cafeteria found for your account. Please contact support.')
+      }
 
-      setDashboardMetrics(metrics)
-      setChartData(chartDataResult)
+      console.log('✅ Found cafeteria for user:', cafeteria.name, cafeteria.id)
+      const currentCafeteriaId = cafeteria.id
+      setCafeteriaId(currentCafeteriaId)
+
+      console.log('🏪 Using cafeteria ID:', currentCafeteriaId)
+
+      // Use the new cafeteria-specific metrics API
+      const params = new URLSearchParams({
+        timeRange: timeRange,
+        cafeteriaId: currentCafeteriaId
+      })
+
+      const apiUrl = `/api/cafeteria/metrics?${params.toString()}`
+      console.log('📡 Calling cafeteria metrics API:', apiUrl)
+
+      // Fetch data from the new cafeteria metrics API
+      const response = await fetch(apiUrl)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch dashboard data')
+      }
+
+      console.log("✅ Cafeteria metrics API response:", data)
+
+      // Use the real metrics from the API
+      setDashboardMetrics(data.metrics)
+
+      // Use chart data from API if available, otherwise create empty structure
+      if (data.chartData) {
+        setChartData({
+          revenue: data.chartData.revenue || new Array(12).fill(0),
+          orders: data.chartData.orders || new Array(12).fill(0),
+          customers: data.chartData.customers || new Array(12).fill(0),
+          months: data.chartData.months || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          dailyRevenue: [],
+          dailyOrders: [],
+          days: []
+        })
+      } else {
+        // Fallback: Generate proper chart data structure to avoid chart errors
+        const months = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ]
+        const emptyMonthlyData = new Array(12).fill(0)
+
+        setChartData({
+          revenue: emptyMonthlyData,
+          orders: emptyMonthlyData,
+          customers: emptyMonthlyData,
+          months: months,
+          dailyRevenue: [],
+          dailyOrders: [],
+          days: []
+        })
+      }
 
       toast({
         title: "Dashboard Updated",
@@ -93,7 +182,7 @@ export default function CafeteriaDashboard() {
       })
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('❌ Error fetching dashboard data:', error)
       setError("Failed to load dashboard data")
       toast({
         title: "Error loading dashboard",
@@ -194,14 +283,14 @@ export default function CafeteriaDashboard() {
 
   return (
     <div className="p-6 animate-fade-in">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold gradient-text">Dashboard Overview</h1>
-            <p className="text-slate-400 mt-1">Real-time data from your cafeteria</p>
-          </div>
+      <CafeteriaPageHeader
+        title="Dashboard Overview"
+        subtitle="Real-time data from your cafeteria"
+      />
 
-          <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
-            <DropdownMenu>
+      <div className="flex justify-end items-center mb-6">
+        <div className="flex gap-3 animate-slide-in-right">
+          <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300">
                   <Calendar className="mr-2 h-4 w-4" />
@@ -241,8 +330,8 @@ export default function CafeteriaDashboard() {
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-          </div>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="modern-card glass-effect overflow-hidden group hover-lift animate-scale-in stagger-1">

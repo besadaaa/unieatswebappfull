@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Search, Plus, MoreVertical, Edit, Trash, AlertTriangle } from "lucide-react"
+import { Search, Plus, MoreVertical, Edit, Trash, AlertTriangle, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/components/ui/use-toast"
 import {
@@ -30,6 +30,7 @@ import {
   getCafeterias,
   type InventoryItem
 } from "@/lib/supabase"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
 // Inventory categories for the dropdown
 const INVENTORY_CATEGORIES = [
@@ -53,6 +54,7 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [cafeteriaId, setCafeteriaId] = useState<string | null>(null)
   const [newItem, setNewItem] = useState({
     name: "",
@@ -70,56 +72,85 @@ export default function InventoryPage() {
     min_quantity: "",
   })
 
-  // Load inventory data on component mount
-  useEffect(() => {
-    const loadInventoryData = async () => {
-      try {
-        setLoading(true)
-        const user = await getCurrentUser()
-        if (!user) {
-          toast({
-            title: "Authentication Required",
-            description: "Please log in to view inventory.",
-            variant: "destructive",
-          })
-          return
-        }
-
-        // Get user's cafeteria
-        const cafeterias = await getCafeterias()
-        const userCafeteria = cafeterias.find(c => c.owner_id === user.id)
-
-        if (!userCafeteria) {
-          // If user doesn't own a cafeteria, use the first available one for demo
-          const firstCafeteria = cafeterias[0]
-          if (firstCafeteria) {
-            setCafeteriaId(firstCafeteria.id)
-            const items = await getInventoryItems(firstCafeteria.id)
-            setInventoryItems(items)
-          } else {
-            toast({
-              title: "No Cafeteria Found",
-              description: "No cafeteria available for inventory management.",
-              variant: "destructive",
-            })
-          }
-        } else {
-          setCafeteriaId(userCafeteria.id)
-          const items = await getInventoryItems(userCafeteria.id)
-          setInventoryItems(items)
-        }
-      } catch (error) {
-        console.error('Error loading inventory:', error)
+  // Load inventory data
+  const loadInventoryData = async () => {
+    try {
+      setLoading(true)
+      const user = await getCurrentUser()
+      if (!user) {
         toast({
-          title: "Error",
-          description: "Failed to load inventory data.",
+          title: "Authentication Required",
+          description: "Please log in to view inventory.",
           variant: "destructive",
         })
-      } finally {
-        setLoading(false)
+        return
       }
-    }
 
+      // Get user's cafeteria
+      const cafeterias = await getCafeterias()
+      const userCafeteria = cafeterias.find(c => c.owner_id === user.id)
+
+      if (!userCafeteria) {
+        // If user doesn't own a cafeteria, use the first available one for demo
+        const firstCafeteria = cafeterias[0]
+        if (firstCafeteria) {
+          setCafeteriaId(firstCafeteria.id)
+          const items = await getInventoryItems(firstCafeteria.id)
+          setInventoryItems(items)
+        } else {
+          toast({
+            title: "No Cafeteria Found",
+            description: "No cafeteria available for inventory management.",
+            variant: "destructive",
+          })
+        }
+      } else {
+        setCafeteriaId(userCafeteria.id)
+        const items = await getInventoryItems(userCafeteria.id)
+        setInventoryItems(items)
+      }
+    } catch (error) {
+      console.error('Error loading inventory:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load inventory data.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    toast({
+      title: "Refreshing inventory",
+      description: "Fetching the latest inventory data...",
+    })
+
+    try {
+      if (cafeteriaId) {
+        const items = await getInventoryItems(cafeteriaId)
+        setInventoryItems(items)
+        toast({
+          title: "Inventory refreshed",
+          description: "Inventory data has been updated with the latest information.",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "There was an error refreshing your data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Load inventory data on component mount
+  useEffect(() => {
     loadInventoryData()
   }, [])
 
@@ -145,13 +176,17 @@ export default function InventoryPage() {
 
   // Calculate status based on quantity and min_quantity
   const calculateStatus = (quantity: number, min_quantity: number) => {
+    console.log('Calculating status for quantity:', quantity, 'min_quantity:', min_quantity)
+    let status
     if (quantity <= 0) {
-      return "out-of-stock"
+      status = "out_of_stock"
     } else if (quantity < min_quantity) {
-      return "low"
+      status = "low_stock"
     } else {
-      return "in-stock"
+      status = "in_stock"
     }
+    console.log('Calculated status:', status)
+    return status
   }
 
   // Handle adding a new item
@@ -259,7 +294,8 @@ export default function InventoryPage() {
       return
     }
 
-    const status = calculateStatus(quantity, min_quantity)
+    // TEMPORARY: Don't calculate/send status to test if that's the issue
+    // const status = calculateStatus(quantity, min_quantity)
 
     try {
       const success = await updateInventoryItem(editedItem.id, {
@@ -268,7 +304,7 @@ export default function InventoryPage() {
         quantity,
         unit: editedItem.unit,
         min_quantity,
-        status,
+        // status,  // REMOVED for testing
       })
 
       if (success && cafeteriaId) {
@@ -334,11 +370,11 @@ export default function InventoryPage() {
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case "in-stock":
+      case "in_stock":
         return "bg-green-500"
-      case "low":
+      case "low_stock":
         return "bg-yellow-500"
-      case "out-of-stock":
+      case "out_of_stock":
         return "bg-red-500"
       default:
         return "bg-gray-500"
@@ -348,16 +384,20 @@ export default function InventoryPage() {
   // Format status text
   const formatStatus = (status: string) => {
     return status
-      .split("-")
+      .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ")
   }
 
   return (
     <div className="flex-1 p-6 space-y-8 animate-fade-in">
-        <div className="flex justify-between items-center animate-slide-in-up">
-          <h1 className="text-3xl font-bold gradient-text animate-shimmer">Inventory Management</h1>
-          <div className="flex items-center gap-4">
+      <CafeteriaPageHeader
+        title="Inventory Management"
+        subtitle="Track and manage your ingredient inventory"
+      />
+
+      <div className="flex justify-end items-center animate-slide-in-up">
+        <div className="flex items-center gap-4">
             <form onSubmit={handleSearch} className="relative w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
               <Input
@@ -367,6 +407,24 @@ export default function InventoryPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </form>
+            <Button
+              variant="outline"
+              className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </>
+              )}
+            </Button>
             <Dialog open={addItemDialogOpen} onOpenChange={setAddItemDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white btn-modern shadow-lg hover:shadow-xl transition-all duration-300">
@@ -448,8 +506,8 @@ export default function InventoryPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
         </div>
+      </div>
 
         <div className="flex gap-4 mb-4">
           <div className="w-1/2">
@@ -483,9 +541,9 @@ export default function InventoryPage() {
               onChange={(e) => setSelectedStatus(e.target.value)}
             >
               <option value="all">All Status</option>
-              <option value="in-stock">In Stock</option>
-              <option value="low">Low Stock</option>
-              <option value="out-of-stock">Out of Stock</option>
+              <option value="in_stock">In Stock</option>
+              <option value="low_stock">Low Stock</option>
+              <option value="out_of_stock">Out of Stock</option>
             </select>
           </div>
         </div>
@@ -521,7 +579,7 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusBadgeColor(item.status)}>{formatStatus(item.status)}</Badge>
-                      {item.status === "low" && <AlertTriangle className="inline ml-2 h-4 w-4 text-yellow-500" />}
+                      {item.status === "low_stock" && <AlertTriangle className="inline ml-2 h-4 w-4 text-yellow-500" />}
                     </TableCell>
                     <TableCell>{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                     <TableCell>

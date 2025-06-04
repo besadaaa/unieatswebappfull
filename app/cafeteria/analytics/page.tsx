@@ -37,6 +37,7 @@ import { exportChartsAsPDF, exportChartDataAsExcel } from "@/lib/chart-export-ut
 import { supabase } from "@/lib/supabase"
 import { CHART_COLORS, PIE_CHART_COLORS, BAR_CHART_COLORS, useChartColors } from "@/lib/chart-colors"
 import { format } from "date-fns"
+import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 import { useUser } from "@/hooks/use-user"
 import { UnifiedChartService } from "@/lib/unified-chart-service"
 
@@ -142,19 +143,27 @@ export default function CafeteriaAnalyticsPage() {
       const startDate = dateFilter?.from ? dateFilter.from.toISOString().split('T')[0] : null
       const endDate = dateFilter?.to ? dateFilter.to.toISOString().split('T')[0] : null
 
-      // Try to get cafeteria ID from user profile if user is logged in
+      // Get cafeteria ID for the current logged-in user
       let cafeteriaId = null
       if (user?.id) {
         try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('cafeteria_id')
-            .eq('id', user.id)
+          console.log('🔍 Getting cafeteria for user:', user.email)
+
+          // Get cafeteria owned by this user
+          const { data: cafeteria, error: cafeteriaError } = await supabase
+            .from('cafeterias')
+            .select('id, name, owner_id')
+            .eq('owner_id', user.id)
             .single()
 
-          cafeteriaId = profile?.cafeteria_id
+          if (cafeteriaError || !cafeteria) {
+            console.log('❌ No cafeteria found for user, showing all data')
+          } else {
+            cafeteriaId = cafeteria.id
+            console.log('✅ Found cafeteria for analytics:', cafeteria.name, cafeteria.id)
+          }
         } catch (error) {
-          console.log('No profile found, showing all data')
+          console.log('Error getting cafeteria, showing all data:', error)
         }
       }
 
@@ -476,9 +485,13 @@ export default function CafeteriaAnalyticsPage() {
 
   return (
     <div className="p-6 space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-slide-in-up">
-        <h1 className="text-3xl font-bold gradient-text animate-shimmer">Cafeteria Analytics Dashboard</h1>
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+      <CafeteriaPageHeader
+        title="Analytics Dashboard"
+        subtitle="Comprehensive insights into your cafeteria's performance"
+      />
+
+      <div className="flex justify-end items-center gap-4 animate-slide-in-up">
+        <div className="flex flex-col md:flex-row gap-4">
           <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} className="w-full md:w-auto glass-effect border-white/20 hover:border-emerald-500/50 btn-modern" />
           <div className="flex gap-3">
             <Button variant="outline" size="icon" onClick={() => fetchAnalyticsData()} disabled={isLoading} className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern">

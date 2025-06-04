@@ -26,8 +26,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // First, create a user account in auth.users (if needed)
-    // For now, we'll just create the application record
+    // Check if an application already exists for this email and cafeteria name
+    const { data: existingApplication, error: checkError } = await supabase
+      .from('cafeteria_applications')
+      .select('id, status, business_name')
+      .eq('contact_email', email)
+      .eq('business_name', cafeteriaName)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking existing application:', checkError)
+      return NextResponse.json(
+        { error: 'Failed to check existing applications' },
+        { status: 500 }
+      )
+    }
+
+    if (existingApplication) {
+      return NextResponse.json(
+        {
+          error: `An application for "${cafeteriaName}" with this email already exists (Status: ${existingApplication.status})`,
+          existingApplicationId: existingApplication.id
+        },
+        { status: 409 } // Conflict
+      )
+    }
 
     // Insert into cafeteria_applications table
     const { data: application, error: applicationError } = await supabase
@@ -194,10 +217,12 @@ export async function PATCH(request: NextRequest) {
           .from('profiles')
           .upsert({
             id: authUserId,
+            email: application.contact_email,
             full_name: application.owner_name,
             phone: application.contact_phone,
             role: 'cafeteria_manager',
             created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
 
         if (profileError) {
@@ -207,27 +232,66 @@ export async function PATCH(request: NextRequest) {
 
         console.log('Created/updated profile for user:', authUserId)
 
-        // 3. Create or update cafeteria record in cafeterias table
-        const { error: cafeteriaError } = await supabaseAdmin
+        // 3. Check if cafeteria already exists for this owner and application
+        const { data: existingCafeteria, error: checkError } = await supabaseAdmin
           .from('cafeterias')
-          .upsert({
-            name: application.business_name,
-            location: application.location,
-            description: application.description,
-            owner_id: authUserId, // Link to the user
-            approval_status: 'approved',
-            is_active: true,
-            is_open: true,
-            rating: 0,
-            created_at: new Date().toISOString(),
-          })
+          .select('id, name, owner_id')
+          .eq('owner_id', authUserId)
+          .eq('name', application.business_name)
+          .single()
 
-        if (cafeteriaError) {
-          console.error('Error creating cafeteria record:', cafeteriaError)
-          throw cafeteriaError
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error('Error checking existing cafeteria:', checkError)
+          throw checkError
         }
 
-        console.log('Created cafeteria record for:', application.business_name)
+        if (existingCafeteria) {
+          // Cafeteria already exists, just update its status
+          console.log('Cafeteria already exists, updating status:', existingCafeteria.id)
+
+          const { error: updateError } = await supabaseAdmin
+            .from('cafeterias')
+            .update({
+              approval_status: 'approved',
+              is_active: true,
+              is_open: true,
+              // Update other fields in case they changed
+              location: application.location,
+              description: application.description,
+            })
+            .eq('id', existingCafeteria.id)
+
+          if (updateError) {
+            console.error('Error updating existing cafeteria:', updateError)
+            throw updateError
+          }
+
+          console.log('Updated existing cafeteria record for:', application.business_name)
+        } else {
+          // Create new cafeteria record
+          console.log('Creating new cafeteria record for:', application.business_name)
+
+          const { error: cafeteriaError } = await supabaseAdmin
+            .from('cafeterias')
+            .insert({
+              name: application.business_name,
+              location: application.location,
+              description: application.description,
+              owner_id: authUserId, // Link to the user
+              approval_status: 'approved',
+              is_active: true,
+              is_open: true,
+              rating: 0,
+              created_at: new Date().toISOString(),
+            })
+
+          if (cafeteriaError) {
+            console.error('Error creating cafeteria record:', cafeteriaError)
+            throw cafeteriaError
+          }
+
+          console.log('Created new cafeteria record for:', application.business_name)
+        }
 
         // 4. Clear the temporary password from the application record
         await supabaseAdmin
