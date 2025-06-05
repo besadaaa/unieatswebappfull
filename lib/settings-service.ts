@@ -69,24 +69,24 @@ export class SettingsService {
         return settingsCache[key]
       }
 
-      // Try to get from cafeteria_settings table first (for cafeteria-specific settings)
-      const { data: cafeteriaSettings } = await supabase
-        .from('cafeteria_settings')
-        .select('*')
-        .limit(1)
+      // Try to get from settings table
+      const { data: setting } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', key)
         .single()
 
-      if (cafeteriaSettings && cafeteriaSettings[key] !== undefined) {
-        settingsCache[key] = cafeteriaSettings[key]
+      if (setting && setting.value !== undefined) {
+        settingsCache[key] = setting.value
         cacheTimestamp = now
-        return cafeteriaSettings[key]
+        return setting.value
       }
 
       // Fallback to default value
       const fallbackValue = defaultValue !== undefined ? defaultValue : DEFAULT_SETTINGS[key as keyof typeof DEFAULT_SETTINGS]
       settingsCache[key] = fallbackValue
       cacheTimestamp = now
-      
+
       return fallbackValue
     } catch (error) {
       console.error(`Error getting setting ${key}:`, error)
@@ -159,19 +159,19 @@ export class SettingsService {
     return await this.getSetting('defaultPreparationTime', 15)
   }
 
-  // Update a setting (stores in cafeteria_settings table)
+  // Update a setting (stores in settings table)
   static async updateSetting(key: string, value: any): Promise<boolean> {
     try {
       // Clear cache
       delete settingsCache[key]
       cacheTimestamp = 0
 
-      // For now, we'll store settings as JSON in the cafeteria_settings table
-      // This is a workaround since we can't create new tables
+      // Store in the settings table
       const { error } = await supabase
-        .from('cafeteria_settings')
+        .from('settings')
         .upsert({
-          [key]: value,
+          key: key,
+          value: value,
           updated_at: new Date().toISOString()
         })
 

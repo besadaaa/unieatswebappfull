@@ -244,7 +244,37 @@ export const getCurrentUser = async () => {
       console.error('Error getting current user:', error)
       return null
     }
-    return user
+
+    if (!user) {
+      return null
+    }
+
+    // Get user profile from profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      console.error('Error getting user profile:', profileError)
+      // Return basic user info if profile fetch fails
+      return {
+        ...user,
+        full_name: user.email?.split('@')[0] || 'User',
+        role: 'student',
+        avatar_url: null,
+        phone: null,
+        is_suspended: false,
+        suspension_reason: null
+      }
+    }
+
+    // Combine auth user with profile data
+    return {
+      ...user,
+      ...profile
+    }
   } catch (error) {
     console.error('Error getting current user:', error)
     return null

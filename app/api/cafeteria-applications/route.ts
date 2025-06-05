@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, createSupabaseAdmin } from '@/lib/supabase'
+import { supabase, createSupabaseAdmin, getCurrentUser } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,6 +99,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
 
@@ -138,6 +147,15 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { applicationId, status, reviewNotes } = body
 

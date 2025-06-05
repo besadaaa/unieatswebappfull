@@ -334,6 +334,9 @@ export default function MenuPage() {
   const [cachedItems, setCachedItems] = useState<MenuItem[]>([])
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
 
+  // Load categories dynamically
+  const { categories, loading: categoriesLoading } = useCategories('menu')
+
   // Enhanced useEffect with offline detection and data persistence
   useEffect(() => {
     const handleOnlineStatus = () => {
@@ -1581,11 +1584,15 @@ export default function MenuPage() {
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
+                              {categoriesLoading ? (
+                                <SelectItem value="" disabled>Loading categories...</SelectItem>
+                              ) : (
+                                categories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                           {formErrors.category && <p className="text-red-500 text-sm">{formErrors.category}</p>}
@@ -1920,7 +1927,9 @@ export default function MenuPage() {
             <div className="space-y-2">
               <Label>Categories</Label>
               <div className="grid grid-cols-2 gap-2">
-                {categories &&
+                {categoriesLoading ? (
+                  <div className="text-sm text-gray-400">Loading categories...</div>
+                ) : (
                   categories.slice(0, 8).map((category) => (
                     <div key={category} className="flex items-center space-x-2">
                       <Checkbox
@@ -1937,7 +1946,8 @@ export default function MenuPage() {
                       />
                       <Label htmlFor={`filter-category-${category}`}>{category}</Label>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -2293,11 +2303,15 @@ export default function MenuPage() {
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
+                          {categoriesLoading ? (
+                            <SelectItem value="" disabled>Loading categories...</SelectItem>
+                          ) : (
+                            categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       {formErrors.category && <p className="text-red-500 text-sm">{formErrors.category}</p>}

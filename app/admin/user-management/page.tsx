@@ -202,72 +202,37 @@ export default function UserManagement() {
     })
 
     try {
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.name,
-            role: formData.role,
-          }
-        }
+      const response = await fetch('/api/admin/users/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          status: formData.status
+        })
       })
 
-      if (authError) {
-        throw authError
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create user')
       }
 
-      if (authData.user) {
-        // Create/update profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: authData.user.id,
-            email: formData.email,
-            full_name: formData.name,
-            role: formData.role,
-            status: formData.status,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+      // Reload users list
+      await loadUsers()
 
-        if (profileError) {
-          throw profileError
-        }
+      setShowAddUserDialog(false)
+      resetForm()
 
-        // Reload users
-        const { data: profiles, error: fetchError } = await supabase
-          .from('profiles')
-          .select(`
-            *,
-            cafeterias!cafeterias_owner_id_fkey(name)
-          `)
-          .order('created_at', { ascending: false })
+      toast({
+        title: "User added successfully",
+        description: `${formData.name} has been added as a ${formData.role}.`,
+      })
 
-        if (!fetchError && profiles) {
-          const formattedUsers = profiles.map((profile: any) => ({
-            id: profile.id,
-            name: profile.full_name || profile.email?.split('@')[0] || 'Unknown',
-            email: profile.email || 'No email',
-            role: profile.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
-                  profile.role === 'admin' ? 'Admin' : 'Student',
-            status: profile.status === 'active' ? 'Active' : 'Inactive',
-            cafeteria: profile.cafeterias?.name || '-',
-            lastActive: new Date(profile.last_sign_in_at || profile.updated_at).toLocaleDateString(),
-            image: profile.avatar_url || "/diverse-group-city.png",
-          }))
-          setUsers(formattedUsers)
-        }
-
-        setShowAddUserDialog(false)
-        resetForm()
-
-        toast({
-          title: "User added successfully",
-          description: `${formData.name} has been added as a ${formData.role}.`,
-        })
-      }
     } catch (error: any) {
       console.error('Error adding user:', error)
       toast({
