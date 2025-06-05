@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd \"uni web\" && npm run build",
-  "outputDirectory": "uni web/.next",
-  "installCommand": "cd \"uni web\" && npm install",
-  "framework": "nextjs"
-}
