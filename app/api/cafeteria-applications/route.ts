@@ -240,15 +240,16 @@ export async function PATCH(request: NextRequest) {
           console.log('Created new auth user:', authUserId)
         }
 
-        // 2. Create or update profile in profiles table
+        // 2. Create or update profile in profiles table (email is in auth.users, not profiles)
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .upsert({
             id: authUserId,
-            email: application.contact_email,
             full_name: application.owner_name,
             phone: application.contact_phone,
             role: 'cafeteria_manager',
+            status: 'active',
+            is_active: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })

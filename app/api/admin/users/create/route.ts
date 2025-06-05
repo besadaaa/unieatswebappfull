@@ -29,6 +29,21 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = createSupabaseAdmin()
 
+    // First check if user already exists
+    try {
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+      const userExists = existingUsers.users?.some(user => user.email === email)
+
+      if (userExists) {
+        return NextResponse.json(
+          { error: 'User with this email already exists' },
+          { status: 400 }
+        )
+      }
+    } catch (checkError) {
+      console.log('Could not check existing users:', checkError)
+    }
+
     // Create user in Supabase Auth using admin client
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -55,12 +70,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create profile in profiles table
+    // Create profile in profiles table (email is in auth.users, not profiles)
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
         id: authData.user.id,
-        email: email,
         full_name: name,
         role: role || 'student',
         status: status || 'active',
