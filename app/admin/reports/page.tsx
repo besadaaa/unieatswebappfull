@@ -311,15 +311,6 @@ export default function Reports() {
 
             <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
                 <Button
-                  variant="outline"
-                  className="glass-effect border-white/20 hover:border-blue-500/50 btn-modern"
-                  onClick={createSampleData}
-                  disabled={isGenerating}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Create Sample Data
-                </Button>
-                <Button
                   className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white btn-modern shadow-lg hover:shadow-xl transition-all duration-300"
                   onClick={() => {
                     console.log("Opening dialog")
@@ -534,8 +525,6 @@ export default function Reports() {
                       <SelectValue placeholder="Select format" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1a1f36] border-gray-700">
-                      <SelectItem value="excel">Excel</SelectItem>
-                      <SelectItem value="pdf">PDF</SelectItem>
                       <SelectItem value="csv">CSV</SelectItem>
                     </SelectContent>
                   </Select>

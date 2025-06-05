@@ -1,48 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { generatePDFReport, generateExcelReport } from '@/lib/report-generation'
+import { createSupabaseAdmin, getCurrentUser } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    // For now, return some sample reports since we don't have a reports storage table
-    // In production, you would store generated reports in a database table
-    const sampleReports = [
-      {
-        id: '1',
-        name: 'Revenue Report - This Month',
-        type: 'Revenue',
-        period: 'This Month',
-        generated: new Date().toLocaleDateString(),
-        format: 'PDF',
-        file_url: '/api/reports/generate?type=financial&format=pdf',
-        file_size: 1024 * 50 // 50KB
-      },
-      {
-        id: '2',
-        name: 'Orders Report - This Week',
-        type: 'Orders',
-        period: 'This Week',
-        generated: new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString(),
-        format: 'Excel',
-        file_url: '/api/reports/generate?type=orders&format=excel',
-        file_size: 1024 * 75 // 75KB
-      },
-      {
-        id: '3',
-        name: 'Users Report - Last Month',
-        type: 'Users',
-        period: 'Last Month',
-        generated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-        format: 'CSV',
-        file_url: '/api/reports/generate?type=analytics&format=excel',
-        file_size: 1024 * 30 // 30KB
-      }
-    ]
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
+    const supabaseAdmin = createSupabaseAdmin()
+
+    // Get all reports from database
+    const { data: reports, error } = await supabaseAdmin
+      .from('reports')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching reports:', error)
+      // If reports table doesn't exist, return empty array
+      return NextResponse.json({
+        success: true,
+        reports: [],
+        total: 0
+      })
+    }
+
+    // Format reports for frontend
+    const formattedReports = reports?.map(report => ({
+      id: report.id,
+      name: report.name,
+      type: report.type,
+      period: report.period,
+      generated: new Date(report.created_at).toLocaleDateString(),
+      format: report.format,
+      file_url: report.file_url,
+      status: report.status
+    })) || []
 
     return NextResponse.json({
       success: true,
-      reports: sampleReports,
-      total: sampleReports.length
+      reports: formattedReports,
+      total: formattedReports.length
     })
 
   } catch (error) {
@@ -53,6 +56,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { reportType, reportPeriod, reportFormat } = body
 
@@ -60,84 +72,90 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Only allow CSV format
+    if (reportFormat.toLowerCase() !== 'csv') {
+      return NextResponse.json({ error: 'Only CSV format is supported' }, { status: 400 })
+    }
+
+    const supabaseAdmin = createSupabaseAdmin()
+
+    // Generate report name
+    const reportName = `${reportType} Report - ${reportPeriod}`
+
     // Calculate date range based on period
     const now = new Date()
-    let startDate: Date
-    let endDate = now
+    let startDate: string
+    let endDate: string = now.toISOString().split('T')[0]
 
     switch (reportPeriod) {
       case 'Today':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        startDate = endDate
         break
       case 'Yesterday':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const yesterday = new Date(now)
+        yesterday.setDate(yesterday.getDate() - 1)
+        startDate = yesterday.toISOString().split('T')[0]
+        endDate = startDate
         break
       case 'This Week':
-        const dayOfWeek = now.getDay()
-        startDate = new Date(now.getTime() - dayOfWeek * 24 * 60 * 60 * 1000)
-        startDate.setHours(0, 0, 0, 0)
+        const weekStart = new Date(now)
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+        startDate = weekStart.toISOString().split('T')[0]
         break
       case 'This Month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
         break
       case 'Last Month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0)
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+        startDate = lastMonth.toISOString().split('T')[0]
+        endDate = lastMonthEnd.toISOString().split('T')[0]
         break
       case 'This Year':
-        startDate = new Date(now.getFullYear(), 0, 1)
+        startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]
         break
       default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+        startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]
     }
 
-    // Map report types to our new system
-    let reportTypeMapping: 'financial' | 'orders' | 'inventory' | 'analytics'
-    switch (reportType.toLowerCase()) {
-      case 'revenue':
-        reportTypeMapping = 'financial'
-        break
-      case 'orders':
-        reportTypeMapping = 'orders'
-        break
-      case 'users':
-      case 'performance':
-      case 'feedback':
-        reportTypeMapping = 'analytics'
-        break
-      default:
-        return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
-    }
+    // Generate the actual report data URL
+    const reportDataUrl = `/api/admin/export/reports?type=${reportType.toLowerCase()}&format=csv&startDate=${startDate}&endDate=${endDate}`
 
-    // Generate report using the new system
-    let result: { success: boolean; blob?: Blob; error?: string }
-
-    if (reportFormat.toLowerCase() === 'pdf') {
-      result = await generatePDFReport(reportTypeMapping, undefined, { from: startDate, to: endDate })
-    } else {
-      result = await generateExcelReport(reportTypeMapping, undefined, { from: startDate, to: endDate })
-    }
-
-    if (!result.success) {
-      return NextResponse.json({ error: result.error || 'Failed to generate report' }, { status: 500 })
-    }
-
-    // Create report metadata
-    const reportName = `${reportType} Report - ${reportPeriod}`
-    const reportId = `report_${Date.now()}`
-
-    return NextResponse.json({
-      success: true,
-      report: {
-        id: reportId,
+    // Create report record in database
+    const { data: report, error: reportError } = await supabaseAdmin
+      .from('reports')
+      .insert({
         name: reportName,
         type: reportType,
         period: reportPeriod,
-        format: reportFormat.toUpperCase(),
-        file_url: `/api/reports/generate?type=${reportTypeMapping}&format=${reportFormat.toLowerCase()}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
-        total_records: 0, // Will be calculated in the actual report
-        generated: new Date().toLocaleDateString()
+        format: 'CSV',
+        file_url: reportDataUrl,
+        generated_by: currentUser.id,
+        status: 'completed'
+      })
+      .select()
+      .single()
+
+    if (reportError) {
+      console.error('Error creating report:', reportError)
+      return NextResponse.json(
+        { error: 'Failed to create report record' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Report generated successfully',
+      report: {
+        id: report.id,
+        name: report.name,
+        type: report.type,
+        period: report.period,
+        format: report.format,
+        file_url: report.file_url,
+        generated: new Date(report.created_at).toLocaleDateString(),
+        status: report.status
       }
     })
 

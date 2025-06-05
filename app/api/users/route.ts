@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdmin } from '@/lib/supabase'
+import { createSupabaseAdmin, getCurrentUser } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
     const supabaseAdmin = createSupabaseAdmin()
     
     // Get all users from auth.users
@@ -90,6 +99,15 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
     const supabaseAdmin = createSupabaseAdmin()
     const body = await request.json()
     const { userId, updates } = body
@@ -136,6 +154,15 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Check if user is authenticated and is admin
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      )
+    }
+
     const supabaseAdmin = createSupabaseAdmin()
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')

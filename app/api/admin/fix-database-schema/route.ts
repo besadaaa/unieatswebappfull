@@ -80,6 +80,22 @@ export async function POST(request: NextRequest) {
       );
     `
 
+    // Create reports table if it doesn't exist
+    const reportsTable = `
+      CREATE TABLE IF NOT EXISTS reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        period TEXT NOT NULL,
+        format TEXT NOT NULL,
+        file_url TEXT NOT NULL,
+        generated_by UUID REFERENCES auth.users(id),
+        status TEXT DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed')),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `
+
     console.log('📝 Executing profile column additions...')
     for (const sql of profileColumns) {
       try {
@@ -134,11 +150,22 @@ export async function POST(request: NextRequest) {
       console.log(`⚠️ Applications table error (continuing): ${err}`)
     }
 
+    console.log('📊 Creating reports table...')
+    try {
+      const { error } = await supabaseAdmin.rpc('exec_sql', { sql_query: reportsTable })
+      if (error) {
+        console.log(`⚠️ Reports table warning: ${error.message}`)
+      }
+    } catch (err) {
+      console.log(`⚠️ Reports table error (continuing): ${err}`)
+    }
+
     // Enable RLS on new tables
     const rlsCommands = [
       'ALTER TABLE settings ENABLE ROW LEVEL SECURITY;',
       'ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE cafeteria_applications ENABLE ROW LEVEL SECURITY;'
+      'ALTER TABLE cafeteria_applications ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE reports ENABLE ROW LEVEL SECURITY;'
     ]
 
     console.log('🔒 Enabling RLS...')

@@ -74,8 +74,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
 
   // Load users from API
-  useEffect(() => {
-    const loadUsers = async () => {
+  const loadUsers = async () => {
       try {
         setLoading(true)
 
@@ -141,6 +140,8 @@ export default function UserManagement() {
       }
     }
 
+  // Load users on component mount
+  useEffect(() => {
     loadUsers()
   }, [])
 
