@@ -32,18 +32,8 @@ import {
 } from "@/lib/supabase"
 import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
 
-// Inventory categories for the dropdown
-const INVENTORY_CATEGORIES = [
-  "produce",
-  "meat",
-  "dairy",
-  "bakery",
-  "grains",
-  "beverages",
-  "condiments",
-  "frozen",
-  "other"
-]
+// Import dynamic categories hook
+import { useCategories } from "@/components/dynamic-categories"
 
 export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -56,9 +46,12 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [cafeteriaId, setCafeteriaId] = useState<string | null>(null)
+
+  // Use dynamic categories
+  const { categories: inventoryCategories, loading: categoriesLoading } = useCategories('inventory')
   const [newItem, setNewItem] = useState({
     name: "",
-    category: "produce",
+    category: inventoryCategories[0] || "produce",
     quantity: "",
     unit: "",
     min_quantity: "",
@@ -249,7 +242,7 @@ export default function InventoryPage() {
         setAddItemDialogOpen(false)
         setNewItem({
           name: "",
-          category: "produce",
+          category: inventoryCategories[0] || "produce",
           quantity: "",
           unit: "",
           min_quantity: "",
@@ -456,7 +449,7 @@ export default function InventoryPage() {
                       value={newItem.category}
                       onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
                     >
-                      {INVENTORY_CATEGORIES.map(category => (
+                      {inventoryCategories.map(category => (
                         <option key={category} value={category}>
                           {category.charAt(0).toUpperCase() + category.slice(1)}
                         </option>
@@ -521,12 +514,11 @@ export default function InventoryPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
               <option value="all">All Categories</option>
-              <option value="produce">Produce</option>
-              <option value="meat">Meat</option>
-              <option value="dairy">Dairy</option>
-              <option value="bakery">Bakery</option>
-              <option value="grains">Grains</option>
-              <option value="beverages">Beverages</option>
+              {inventoryCategories.map(category => (
+                <option key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </option>
+              ))}
             </select>
           </div>
 

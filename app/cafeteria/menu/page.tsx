@@ -80,21 +80,8 @@ interface MenuItem {
   customizationOptions?: any[]
 }
 
-// Improved categories with more options
-const categories = [
-  "Breakfast",
-  "Lunch",
-  "Dinner",
-  "Snacks",
-  "Beverages",
-  "Desserts",
-  "Vegan",
-  "Vegetarian",
-  "Gluten-Free",
-  "Keto-Friendly",
-  "Low-Calorie",
-  "Protein-Rich",
-]
+// Categories are now loaded dynamically from settings
+import { useCategories } from "@/components/dynamic-categories"
 
 // Enhanced allergens list
 const allergenOptions = [

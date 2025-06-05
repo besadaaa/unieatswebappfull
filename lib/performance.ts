@@ -155,12 +155,59 @@ export const IMAGE_CONFIG = {
   }
 }
 
-// API optimization
+// API optimization - now uses dynamic settings
+import SettingsService from './settings-service'
+
+export class DynamicAPIConfig {
+  private static cache: any = null
+  private static cacheTime = 0
+  private static readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+  static async getConfig() {
+    const now = Date.now()
+
+    // Return cached config if still valid
+    if (this.cache && (now - this.cacheTime) < this.CACHE_DURATION) {
+      return this.cache
+    }
+
+    try {
+      // Load performance settings from database
+      const settings = await SettingsService.getPerformanceSettings()
+
+      this.cache = {
+        TIMEOUT: settings.apiTimeout || 10000,
+        RETRY_ATTEMPTS: settings.retryAttempts || 3,
+        RETRY_DELAY: settings.retryDelay || 1000,
+        CACHE_TTL: settings.cacheTtl || 300000,
+      }
+
+      this.cacheTime = now
+      return this.cache
+    } catch (error) {
+      console.error('Error loading API config:', error)
+
+      // Fallback to default values
+      const defaultConfig = {
+        TIMEOUT: 10000,
+        RETRY_ATTEMPTS: 3,
+        RETRY_DELAY: 1000,
+        CACHE_TTL: 300000,
+      }
+
+      this.cache = defaultConfig
+      this.cacheTime = now
+      return defaultConfig
+    }
+  }
+}
+
+// Legacy export for backward compatibility
 export const API_CONFIG = {
-  TIMEOUT: 10000, // 10 seconds
+  TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
-  CACHE_TTL: 5 * 60 * 1000, // 5 minutes
+  CACHE_TTL: 5 * 60 * 1000,
 }
 
 // Virtual scrolling configuration

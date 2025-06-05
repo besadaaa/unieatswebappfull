@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,13 +10,15 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Save, Globe, Bell, Shield, CreditCard, Mail, Users, Clock } from "lucide-react"
+import { Save, Globe, Bell, Shield, CreditCard, Mail, Users, Clock, RefreshCw } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/admin/page-header"
-import { PageHeader } from "@/components/admin/page-header"
+import SettingsService from "@/lib/settings-service"
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general")
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     platformName: "UniEats",
     platformUrl: "https://unieats.com",
@@ -28,35 +30,91 @@ export default function Settings() {
     cafeteriaApplications: true,
     autoApprove: true,
     platformFee: "10",
+    serviceFeeRate: "4",
+    serviceFeeCap: "20",
+    commissionRate: "10",
     maintenanceMessage: "We're currently performing scheduled maintenance. Please check back soon.",
   })
 
-  // Update the handleSaveChanges function to properly handle saving settings
+  // Load settings from database
+  useEffect(() => {
+    loadSettings()
+  }, [])
 
-  const handleSaveChanges = () => {
-    // Show loading state
-    toast({
-      title: "Saving settings",
-      description: "Please wait while we update your settings...",
-    })
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      const settings = await SettingsService.getPlatformSettings()
+      const financialSettings = await SettingsService.getFinancialSettings()
 
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        // In a real app, this would send the formData to an API
+      setFormData({
+        platformName: settings.platformName || "UniEats",
+        platformUrl: settings.platformUrl || "https://unieats.com",
+        supportEmail: settings.supportEmail || "support@unieats.com",
+        timezone: settings.timezone || "Africa/Cairo",
+        dateFormat: settings.dateFormat || "YYYY-MM-DD",
+        maintenanceMode: settings.maintenanceMode || false,
+        newRegistrations: settings.newRegistrations !== false,
+        cafeteriaApplications: settings.cafeteriaApplications !== false,
+        autoApprove: settings.autoApprove !== false,
+        platformFee: String(financialSettings.commissionRate * 100 || 10),
+        serviceFeeRate: String(financialSettings.serviceFeeRate * 100 || 4),
+        serviceFeeCap: String(financialSettings.serviceFeeCap || 20),
+        commissionRate: String(financialSettings.commissionRate * 100 || 10),
+        maintenanceMessage: settings.maintenanceMessage || "We're currently performing scheduled maintenance. Please check back soon.",
+      })
+    } catch (error) {
+      console.error('Error loading settings:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load settings. Using defaults.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
-        toast({
-          title: "Settings saved",
-          description: "Your settings have been updated successfully.",
-        })
-      } catch (error) {
-        toast({
-          title: "Error saving settings",
-          description: "There was a problem saving your settings. Please try again.",
-          variant: "destructive",
-        })
-      }
-    }, 1500)
+  const handleSaveChanges = async () => {
+    try {
+      setSaving(true)
+
+      toast({
+        title: "Saving settings",
+        description: "Please wait while we update your settings...",
+      })
+
+      // Save platform settings
+      await SettingsService.updateSetting('platformName', formData.platformName)
+      await SettingsService.updateSetting('platformUrl', formData.platformUrl)
+      await SettingsService.updateSetting('supportEmail', formData.supportEmail)
+      await SettingsService.updateSetting('timezone', formData.timezone)
+      await SettingsService.updateSetting('dateFormat', formData.dateFormat)
+      await SettingsService.updateSetting('maintenanceMode', formData.maintenanceMode)
+      await SettingsService.updateSetting('newRegistrations', formData.newRegistrations)
+      await SettingsService.updateSetting('cafeteriaApplications', formData.cafeteriaApplications)
+      await SettingsService.updateSetting('autoApprove', formData.autoApprove)
+      await SettingsService.updateSetting('maintenanceMessage', formData.maintenanceMessage)
+
+      // Save financial settings
+      await SettingsService.updateSetting('serviceFeeRate', parseFloat(formData.serviceFeeRate) / 100)
+      await SettingsService.updateSetting('serviceFeeCap', parseFloat(formData.serviceFeeCap))
+      await SettingsService.updateSetting('commissionRate', parseFloat(formData.commissionRate) / 100)
+
+      toast({
+        title: "Settings saved",
+        description: "Your settings have been updated successfully.",
+      })
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      toast({
+        title: "Error saving settings",
+        description: "There was a problem saving your settings. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Update the handleToggleChange function to properly handle toggle changes
@@ -280,16 +338,47 @@ export default function Settings() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="platform-fee">Platform Fee (%)</Label>
+                          <Label htmlFor="service-fee-rate">Service Fee Rate (%)</Label>
                           <Input
-                            id="platform-fee"
-                            value={formData.platformFee}
-                            onChange={(e) => setFormData({ ...formData, platformFee: e.target.value })}
+                            id="service-fee-rate"
+                            value={formData.serviceFeeRate}
+                            onChange={(e) => setFormData({ ...formData, serviceFeeRate: e.target.value })}
                             type="number"
                             min="0"
                             max="100"
+                            step="0.1"
                             className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
                           />
+                          <p className="text-xs text-gray-400">Fee charged to students on orders</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="service-fee-cap">Service Fee Cap (EGP)</Label>
+                          <Input
+                            id="service-fee-cap"
+                            value={formData.serviceFeeCap}
+                            onChange={(e) => setFormData({ ...formData, serviceFeeCap: e.target.value })}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                          />
+                          <p className="text-xs text-gray-400">Maximum service fee amount</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="commission-rate">Commission Rate (%)</Label>
+                          <Input
+                            id="commission-rate"
+                            value={formData.commissionRate}
+                            onChange={(e) => setFormData({ ...formData, commissionRate: e.target.value })}
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                          />
+                          <p className="text-xs text-gray-400">Commission taken from cafeterias</p>
                         </div>
 
                         <div className="space-y-2">
@@ -310,10 +399,27 @@ export default function Settings() {
               </Tabs>
             </div>
 
-            <div className="mt-6 flex justify-end">
-              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black" onClick={handleSaveChanges}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={loadSettings}
+                disabled={loading || saving}
+                className="border-gray-600 hover:bg-gray-800"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Reload Settings
+              </Button>
+              <Button
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                onClick={handleSaveChanges}
+                disabled={loading || saving}
+              >
+                {saving ? (
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </CardContent>

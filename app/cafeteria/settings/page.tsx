@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 import { toast } from "@/components/ui/use-toast"
 import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
+import SettingsService from "@/lib/settings-service"
 
 type BusinessHours = {
   day: string
@@ -19,6 +20,7 @@ type BusinessHours = {
 }
 
 export default function SettingsPage() {
+  const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState({
     general: {
       onlineOrdering: true,
@@ -37,6 +39,47 @@ export default function SettingsPage() {
       dataRetention: "90",
     },
   })
+
+  // Load settings from database
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      const defaultPreparationTime = await SettingsService.getDefaultPreparationTime()
+      const performanceSettings = await SettingsService.getPerformanceSettings()
+
+      setSettings({
+        general: {
+          onlineOrdering: true,
+          autoAcceptOrders: false,
+          preparationTime: String(defaultPreparationTime),
+        },
+        notifications: {
+          newOrders: true,
+          lowStock: true,
+          reviews: true,
+          marketing: false,
+        },
+        advanced: {
+          analyticsTracking: true,
+          autoUpdate: false,
+          dataRetention: String(performanceSettings.dataRetentionDays || 90),
+        },
+      })
+    } catch (error) {
+      console.error('Error loading settings:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load settings. Using defaults.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([
     { day: "Monday", openTime: "8:00", closeTime: "20:00" },
