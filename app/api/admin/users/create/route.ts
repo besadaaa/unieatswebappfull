@@ -7,10 +7,18 @@ export async function POST(request: NextRequest) {
     // Check if user is authenticated and is admin
     const currentUser = await getCurrentUser()
     if (!currentUser || currentUser.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
-        { status: 401 }
-      )
+      // Temporary bypass: allow if no users exist in the system (initial setup)
+      const supabaseAdmin = createSupabaseAdmin()
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+
+      if (!existingUsers.users || existingUsers.users.length === 0) {
+        console.log('🔧 No users exist, allowing initial admin setup')
+      } else {
+        return NextResponse.json(
+          { error: 'Unauthorized. Admin access required.' },
+          { status: 401 }
+        )
+      }
     }
 
     const { name, email, password, role, status } = await request.json()

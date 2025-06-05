@@ -258,15 +258,23 @@ export const getCurrentUser = async () => {
 
     if (profileError) {
       console.error('Error getting user profile:', profileError)
+
+      // Check if user is admin based on email
+      const isAdmin = user.email === 'admin@unieats.com' ||
+                     user.email?.includes('admin') ||
+                     user.user_metadata?.role === 'admin'
+
       // Return basic user info if profile fetch fails
       return {
         ...user,
-        full_name: user.email?.split('@')[0] || 'User',
-        role: 'student',
+        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        role: isAdmin ? 'admin' : (user.user_metadata?.role || 'student'),
         avatar_url: null,
         phone: null,
         is_suspended: false,
-        suspension_reason: null
+        suspension_reason: null,
+        status: 'active',
+        is_active: true
       }
     }
 
