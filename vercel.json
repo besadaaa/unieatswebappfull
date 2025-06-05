@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd 'uni web' && npm run build",
+  "outputDirectory": "uni web/.next",
+  "installCommand": "cd 'uni web' && npm install",
+  "framework": "nextjs",
+  "functions": {
+    "uni web/app/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
+}
