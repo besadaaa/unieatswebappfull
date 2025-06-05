@@ -39,7 +39,61 @@ import { CHART_COLORS, PIE_CHART_COLORS, BAR_CHART_COLORS, useChartColors } from
 import { format } from "date-fns"
 import { PageHeader } from "@/components/admin/page-header"
 
-export default function AnalyticsPage() {
+// Error boundary component for analytics
+function AnalyticsErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      console.error('Analytics page error:', error)
+      setHasError(true)
+      setError(new Error(error.message))
+    }
+
+    window.addEventListener('error', handleError)
+    return () => window.removeEventListener('error', handleError)
+  }, [])
+
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-[#0f1424] text-white p-6">
+        <PageHeader
+          title="Analytics"
+          description="Platform performance and insights"
+        />
+        <div className="max-w-2xl mx-auto mt-8">
+          <Card className="bg-red-900/20 border-red-500">
+            <CardHeader>
+              <CardTitle className="text-red-400">Analytics Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-300 mb-4">Failed to load analytics:</p>
+              <pre className="bg-red-950 p-4 rounded text-sm overflow-auto text-red-200">
+                {error?.message || 'Unknown error occurred'}
+              </pre>
+              <Button
+                onClick={() => {
+                  setHasError(false)
+                  setError(null)
+                  window.location.reload()
+                }}
+                className="mt-4"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reload Analytics
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+function AnalyticsPageContent() {
   // Get theme-aware colors
   const { colors, PIE_CHART_COLORS, BAR_CHART_COLORS, generateBackgroundColors } = useChartColors()
 
@@ -1260,5 +1314,14 @@ export default function AnalyticsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+// Main export with error boundary
+export default function AnalyticsPage() {
+  return (
+    <AnalyticsErrorBoundary>
+      <AnalyticsPageContent />
+    </AnalyticsErrorBoundary>
   )
 }

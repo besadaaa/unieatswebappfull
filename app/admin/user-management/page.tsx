@@ -87,28 +87,40 @@ export default function UserManagement() {
           throw new Error(data.error || 'Failed to fetch users')
         }
 
-        // Format users for the UI
-        const formattedUsers = data.users?.map((user: any) => ({
-          id: user.id,
-          name: user.full_name || user.email?.split('@')[0] || 'Unknown User',
-          email: user.email || 'No email',
-          role: user.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
-                user.role === 'admin' ? 'Admin' :
-                user.role === 'student' ? 'Student' : user.role || 'No role',
-          status: user.email_confirmed_at ? 'Active' : 'Pending',
-          cafeteria: '-', // We'll need to add cafeteria lookup later
-          lastActive: user.last_sign_in_at ?
-            new Date(user.last_sign_in_at).toLocaleDateString() :
-            user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Never',
-          image: "/diverse-group-city.png",
-          // Additional fields for detailed view
-          full_name: user.full_name,
-          phone: user.phone,
-          theme: user.theme,
-          notification_enabled: user.notification_enabled,
-          email_confirmed_at: user.email_confirmed_at,
-          last_sign_in_at: user.last_sign_in_at,
-        })) || []
+        // Format users for the UI with better name handling
+        const formattedUsers = data.users?.map((user: any) => {
+          // Better name extraction logic
+          let displayName = 'Unknown User'
+          if (user.full_name && user.full_name.trim()) {
+            displayName = user.full_name.trim()
+          } else if (user.email) {
+            // Extract name from email (before @)
+            const emailName = user.email.split('@')[0]
+            displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1).replace(/[._]/g, ' ')
+          }
+
+          return {
+            id: user.id,
+            name: displayName,
+            email: user.email || 'No email',
+            role: user.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
+                  user.role === 'admin' ? 'Admin' :
+                  user.role === 'student' ? 'Student' : user.role || 'No role',
+            status: user.email_confirmed_at ? 'Active' : 'Pending',
+            cafeteria: '-', // We'll need to add cafeteria lookup later
+            lastActive: user.last_sign_in_at ?
+              new Date(user.last_sign_in_at).toLocaleDateString() :
+              user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Never',
+            image: "/diverse-group-city.png",
+            // Additional fields for detailed view
+            full_name: user.full_name || displayName,
+            phone: user.phone,
+            theme: user.theme,
+            notification_enabled: user.notification_enabled,
+            email_confirmed_at: user.email_confirmed_at,
+            last_sign_in_at: user.last_sign_in_at,
+          }
+        }) || []
 
         setUsers(formattedUsers)
 
