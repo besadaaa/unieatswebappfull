@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Use service role key for admin operations (server-side only)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createSupabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +12,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Fetching order items for orders:', orderIds)
+
+    // Create Supabase admin client
+    const supabaseAdmin = createSupabaseAdmin()
+
+    if (!supabaseAdmin) {
+      console.error('Failed to create Supabase admin client')
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
+    }
 
     // First, let's check what columns actually exist
     const { data: testItem, error: testError } = await supabaseAdmin
@@ -107,6 +109,14 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Fetching order items for single order:', orderId)
+
+    // Create Supabase admin client
+    const supabaseAdmin = createSupabaseAdmin()
+
+    if (!supabaseAdmin) {
+      console.error('Failed to create Supabase admin client')
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
+    }
 
     // Fetch order items with menu item names using the correct field names
     const { data: orderItems, error: orderItemsError } = await supabaseAdmin
