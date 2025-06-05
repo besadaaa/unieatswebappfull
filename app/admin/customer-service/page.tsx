@@ -439,21 +439,22 @@ export default function CustomerServicePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Tickets List */}
         <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Support Tickets</CardTitle>
-              <CardDescription>
+          <Card className="modern-card glass-effect hover-lift">
+            <CardHeader className="relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-2xl"></div>
+              <CardTitle className="text-white relative z-10">Support Tickets</CardTitle>
+              <CardDescription className="text-gray-300 relative z-10">
                 {filteredMessages.length} ticket{filteredMessages.length !== 1 ? "s" : ""}
               </CardDescription>
-              <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="cafeteria">Cafeteria</TabsTrigger>
-                  <TabsTrigger value="student">Students</TabsTrigger>
+              <Tabs defaultValue="all" className="w-full relative z-10" onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-3 glass-effect border-white/20">
+                  <TabsTrigger value="all" className="text-white data-[state=active]:bg-blue-500/50">All</TabsTrigger>
+                  <TabsTrigger value="cafeteria" className="text-white data-[state=active]:bg-purple-500/50">Cafeteria</TabsTrigger>
+                  <TabsTrigger value="student" className="text-white data-[state=active]:bg-green-500/50">Students</TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                 {filteredMessages.length > 0 ? (
                   filteredMessages
@@ -461,19 +462,19 @@ export default function CustomerServicePage() {
                     .map((message) => (
                       <div
                         key={message.id}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedMessage?.id === message.id ? "bg-muted" : "hover:bg-muted/50"
+                        className={`p-3 rounded-lg cursor-pointer transition-all duration-300 glass-effect border border-white/10 hover:border-white/20 ${
+                          selectedMessage?.id === message.id ? "bg-white/10 border-blue-500/50" : "hover:bg-white/5"
                         } ${message.isUnread ? "border-l-4 border-blue-500" : ""}`}
                         onClick={() => setSelectedMessage(message)}
                       >
                         <div className="flex justify-between items-start mb-1">
-                          <div className="font-medium truncate flex-1">{message.title}</div>
+                          <div className="font-medium truncate flex-1 text-white">{message.title}</div>
                           <div className="flex items-center gap-2">
                             {message.isUnread && <span className="h-2 w-2 rounded-full bg-blue-500"></span>}
                             {getStatusBadge(message.status)}
                           </div>
                         </div>
-                        <div className="flex justify-between items-center text-sm text-muted-foreground">
+                        <div className="flex justify-between items-center text-sm text-gray-300">
                           <div className="flex items-center gap-2">
                             <span>{message.user.name}</span>
                             {getUserTypeBadge(message.user.type)}
@@ -496,15 +497,16 @@ export default function CustomerServicePage() {
         {/* Selected Ticket */}
         <div className="md:col-span-2">
           {selectedMessage ? (
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
+            <Card className="modern-card glass-effect hover-lift">
+              <CardHeader className="flex flex-row items-start justify-between relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-blue-500/10 rounded-full blur-2xl"></div>
+                <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-1">
-                    <CardTitle>{selectedMessage.title}</CardTitle>
+                    <CardTitle className="text-white">{selectedMessage.title}</CardTitle>
                     {getStatusBadge(selectedMessage.status)}
                     {getPriorityBadge(selectedMessage.priority)}
                   </div>
-                  <CardDescription className="flex items-center gap-2">
+                  <CardDescription className="flex items-center gap-2 text-gray-300">
                     <span>From: {selectedMessage.user.name}</span>
                     {getUserTypeBadge(selectedMessage.user.type)}
                     <span>•</span>

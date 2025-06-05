@@ -314,26 +314,27 @@ export default function CafeteriaSupport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Ticket List */}
         <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Support Tickets</CardTitle>
-              <CardDescription>
+          <Card className="modern-card glass-effect hover-lift">
+            <CardHeader className="relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-full blur-2xl"></div>
+              <CardTitle className="text-white relative z-10">My Support Tickets</CardTitle>
+              <CardDescription className="text-gray-300 relative z-10">
                 {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                 {tickets.length > 0 ? (
                   tickets.map((ticket) => (
                     <div
                       key={ticket.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                        selectedTicket?.id === ticket.id ? "bg-muted" : "hover:bg-muted/50"
+                      className={`p-3 rounded-lg cursor-pointer transition-all duration-300 glass-effect border border-white/10 hover:border-white/20 ${
+                        selectedTicket?.id === ticket.id ? "bg-white/10 border-orange-500/50" : "hover:bg-white/5"
                       } ${ticket.hasUnreadMessages ? "border-l-4 border-blue-500" : ""}`}
                       onClick={() => handleTicketSelect(ticket)}
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <div className="font-medium truncate flex-1">{ticket.subject}</div>
+                        <div className="font-medium truncate flex-1 text-white">{ticket.subject}</div>
                         <div className="flex items-center gap-2">
                           {ticket.hasUnreadMessages && (
                             <span className="h-2 w-2 rounded-full bg-blue-500"></span>
@@ -341,7 +342,7 @@ export default function CafeteriaSupport() {
                           {getStatusBadge(ticket.status)}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center text-sm text-muted-foreground">
+                      <div className="flex justify-between items-center text-sm text-gray-300">
                         <div>
                           {ticket.messageCount || 0} message{(ticket.messageCount || 0) !== 1 ? "s" : ""}
                         </div>
@@ -360,10 +361,11 @@ export default function CafeteriaSupport() {
           </Card>
 
           {/* New Ticket Form */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Create New Ticket</CardTitle>
-              <CardDescription>Submit a new support request</CardDescription>
+          <Card className="mt-6 modern-card glass-effect hover-lift">
+            <CardHeader className="relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-blue-500/10 rounded-full blur-2xl"></div>
+              <CardTitle className="text-white relative z-10">Create New Ticket</CardTitle>
+              <CardDescription className="text-gray-300 relative z-10">Submit a new support request</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -421,13 +423,14 @@ export default function CafeteriaSupport() {
         {/* Selected Ticket */}
         <div className="md:col-span-2">
           {selectedTicket ? (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2 mb-1">
-                  <CardTitle>{selectedTicket.subject}</CardTitle>
+            <Card className="modern-card glass-effect hover-lift">
+              <CardHeader className="relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-2xl"></div>
+                <div className="flex items-center gap-2 mb-1 relative z-10">
+                  <CardTitle className="text-white">{selectedTicket.subject}</CardTitle>
                   {getStatusBadge(selectedTicket.status)}
                 </div>
-                <CardDescription>Created on {new Date(selectedTicket.timestamp).toLocaleString()}</CardDescription>
+                <CardDescription className="text-gray-300 relative z-10">Created on {new Date(selectedTicket.timestamp).toLocaleString()}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
