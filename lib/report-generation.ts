@@ -494,87 +494,32 @@ const processFinancialData = async (
 
     console.log(`Found ${orders?.length || 0} orders for financial report`)
 
-    // If no orders found, create some realistic sample data for demonstration
+    // If no orders found, return empty report with message
     if (!orders || orders.length === 0) {
-      console.log('No orders found, generating sample financial data for demonstration')
-
-      const sampleData = []
-      const today = new Date()
-
-      // Generate 30 days of sample data
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000)
-        const dailyOrders = Math.floor(Math.random() * 20) + 5 // 5-25 orders per day
-        const dailyRevenue = dailyOrders * (50 + Math.random() * 100) // 50-150 EGP per order
-        const serviceFees = dailyRevenue * 0.04 // 4% service fee
-        const commission = dailyRevenue * 0.10 // 10% commission
-
-        sampleData.push({
-          date: date.toISOString().split('T')[0],
-          orders: dailyOrders,
-          completedOrders: Math.floor(dailyOrders * 0.85), // 85% completion rate
-          revenue: Math.round(dailyRevenue),
-          serviceFees: Math.round(serviceFees),
-          commission: Math.round(commission),
-          netAmount: Math.round(dailyRevenue - commission)
-        })
-      }
-
-      const totalOrders = sampleData.reduce((sum, day) => sum + day.orders, 0)
-      const totalRevenue = sampleData.reduce((sum, day) => sum + day.revenue, 0)
-      const totalServiceFees = sampleData.reduce((sum, day) => sum + day.serviceFees, 0)
-      const totalCommissions = sampleData.reduce((sum, day) => sum + day.commission, 0)
-      const completedOrders = sampleData.reduce((sum, day) => sum + day.completedOrders, 0)
+      console.log('No orders found in database for the specified date range')
 
       return {
         title: 'Financial Report',
         dateRange: { from: startDate, to: endDate },
-        data: sampleData,
+        data: [],
         summary: {
-          totalOrders,
-          completedOrders,
-          totalRevenue,
-          completedRevenue: Math.round(totalRevenue * 0.85),
-          averageOrderValue: Math.round(totalRevenue / totalOrders),
-          completionRate: 85,
-          totalServiceFees,
-          totalCommissions,
-          totalAdminRevenue: totalServiceFees + totalCommissions,
-          platformRevenue: totalServiceFees + totalCommissions,
-          topPerformingItems: [
-            { name: 'Chicken Shawarma', category: 'Main Course', quantity: 45, revenue: 2250 },
-            { name: 'Beef Burger', category: 'Main Course', quantity: 38, revenue: 1900 },
-            { name: 'Caesar Salad', category: 'Salads', quantity: 32, revenue: 1280 },
-            { name: 'Margherita Pizza', category: 'Pizza', quantity: 28, revenue: 1680 },
-            { name: 'Chocolate Cake', category: 'Desserts', quantity: 25, revenue: 750 }
-          ],
-          growthRate: 12.5,
-          ordersByStatus: {
-            'completed': completedOrders,
-            'preparing': Math.floor(totalOrders * 0.08),
-            'ready': Math.floor(totalOrders * 0.05),
-            'cancelled': Math.floor(totalOrders * 0.02)
-          },
-          ordersByPayment: {
-            'card': Math.floor(totalOrders * 0.6),
-            'cash_on_pickup': Math.floor(totalOrders * 0.35),
-            'mobile_wallet': Math.floor(totalOrders * 0.05)
-          }
+          totalOrders: 0,
+          completedOrders: 0,
+          totalRevenue: 0,
+          completedRevenue: 0,
+          averageOrderValue: 0,
+          completionRate: 0,
+          totalServiceFees: 0,
+          totalCommissions: 0,
+          totalAdminRevenue: 0,
+          platformRevenue: 0,
+          topPerformingItems: [],
+          growthRate: 0,
+          ordersByStatus: {},
+          ordersByPayment: {},
+          message: 'No orders found for the selected date range. Create some orders to see financial data.'
         },
-        charts: [
-          {
-            type: 'line',
-            title: 'Daily Revenue Trend',
-            data: sampleData.map(item => item.revenue),
-            labels: sampleData.map(item => item.date)
-          },
-          {
-            type: 'bar',
-            title: 'Revenue Breakdown',
-            data: [totalServiceFees, totalCommissions, totalRevenue - totalServiceFees - totalCommissions],
-            labels: ['Service Fees', 'Commissions', 'Net to Cafeterias']
-          }
-        ]
+        charts: []
       }
     }
 
@@ -829,55 +774,23 @@ const processOrdersData = async (
 
     if (error) throw error
 
-    // If no orders found, create sample data
+    // If no orders found, return empty report
     if (!orders || orders.length === 0) {
-      console.log('No orders found, generating sample orders data')
-
-      const sampleOrders = []
-      const statuses = ['completed', 'preparing', 'ready', 'cancelled']
-      const paymentMethods = ['card', 'cash_on_pickup', 'mobile_wallet']
-
-      for (let i = 0; i < 50; i++) {
-        const orderDate = new Date(startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime()))
-        sampleOrders.push({
-          id: `order_${i + 1}`,
-          created_at: orderDate.toISOString(),
-          customer_name: `Customer ${i + 1}`,
-          customer_email: `customer${i + 1}@example.com`,
-          cafeteria_name: `Cafeteria ${Math.floor(i / 10) + 1}`,
-          total_amount: Math.round(50 + Math.random() * 100),
-          status: statuses[Math.floor(Math.random() * statuses.length)],
-          item_count: Math.floor(Math.random() * 5) + 1,
-          payment_method: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-          pickup_time: new Date(orderDate.getTime() + 30 * 60 * 1000).toISOString(),
-          rating: Math.random() > 0.3 ? Math.floor(Math.random() * 5) + 1 : null
-        })
-      }
-
-      const statusBreakdown = sampleOrders.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1
-        return acc
-      }, {} as Record<string, number>)
+      console.log('No orders found in database for the specified date range')
 
       return {
         title: 'Orders Report',
         dateRange: { from: startDate, to: endDate },
-        data: sampleOrders,
+        data: [],
         summary: {
-          totalOrders: sampleOrders.length,
-          totalRevenue: sampleOrders.reduce((sum, order) => sum + order.total_amount, 0),
-          averageOrderValue: sampleOrders.reduce((sum, order) => sum + order.total_amount, 0) / sampleOrders.length,
-          topPerformingItems: ['Chicken Shawarma', 'Beef Burger', 'Caesar Salad', 'Margherita Pizza', 'Chocolate Cake'],
-          growthRate: 8.5
+          totalOrders: 0,
+          totalRevenue: 0,
+          averageOrderValue: 0,
+          topPerformingItems: [],
+          growthRate: 0,
+          message: 'No orders found for the selected date range. Orders will appear here once customers start placing orders.'
         },
-        charts: [
-          {
-            type: 'pie',
-            title: 'Order Status Distribution',
-            data: Object.values(statusBreakdown),
-            labels: Object.keys(statusBreakdown)
-          }
-        ]
+        charts: []
       }
     }
 
