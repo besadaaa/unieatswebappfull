@@ -80,8 +80,19 @@ interface MenuItem {
   customizationOptions?: any[]
 }
 
-// Categories are now loaded dynamically from settings
-import { useCategories } from "@/components/dynamic-categories"
+// Categories for menu items
+const categories = [
+  "Breakfast",
+  "Lunch",
+  "Dinner",
+  "Beverages",
+  "Desserts",
+  "Snacks",
+  "Appetizers",
+  "Main Course",
+  "Sides",
+  "Salads"
+]
 
 // Enhanced allergens list
 const allergenOptions = [
