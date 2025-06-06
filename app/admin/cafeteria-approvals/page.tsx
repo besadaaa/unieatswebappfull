@@ -57,36 +57,35 @@ export default function CafeteriaApprovals() {
   // Real cafeteria applications data from Supabase
   const [cafeteriaApplications, setCafeteriaApplications] = useState<CafeteriaApplication[]>([])
 
-  // Load cafeteria applications from API
+  // Load cafeteria applications directly from Supabase
   useEffect(() => {
     const loadCafeteriaApplications = async () => {
       try {
         setLoading(true)
 
-        // Fetch cafeteria applications via API
-        const response = await fetch('/api/cafeteria-applications')
+        // Fetch cafeteria applications directly from Supabase
+        const { data: applications, error } = await supabase
+          .from('cafeteria_applications')
+          .select('*')
+          .order('created_at', { ascending: false })
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch applications: ${response.status}`)
-        }
-
-        const data = await response.json()
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to load applications')
+        if (error) {
+          console.error('Error fetching cafeteria applications:', error)
+          throw new Error(error.message || 'Failed to load applications')
         }
 
         // Format applications for the UI
-        const formattedApplications = data.applications?.map((application: any) => ({
+        const formattedApplications = applications?.map((application: any) => ({
           id: application.id,
-          name: application.business_name || application.cafeteria_name || 'Unknown Business',
+          name: application.business_name || application.cafeteria_name || application.name || 'Unknown Business',
           location: application.location || application.cafeteria_location || 'Location not specified',
           status: application.status || 'pending',
           owner: application.owner_name || `${application.owner_first_name || ''} ${application.owner_last_name || ''}`.trim() || 'Unknown Owner',
           email: application.contact_email || application.email || 'No email',
           phone: application.contact_phone || application.phone || 'No phone',
           website: application.website || 'No website',
-          submittedDate: application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : 'Unknown',
+          submittedDate: application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() :
+                        application.created_at ? new Date(application.created_at).toLocaleDateString() : 'Unknown',
           description: application.description || application.cafeteria_description || 'No description provided',
         })) || []
 
@@ -127,24 +126,24 @@ export default function CafeteriaApprovals() {
   // Handle approve action
   const handleApprove = async (id: string) => {
     try {
-      // Update status via API
-      const response = await fetch('/api/cafeteria-applications', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          applicationId: id,
+      // Update status directly in Supabase
+      const { data, error } = await supabase
+        .from('cafeteria_applications')
+        .update({
           status: 'approved',
-          reviewNotes: 'Application approved by admin'
-        }),
-      })
+          reviewed_at: new Date().toISOString(),
+          review_notes: 'Application approved by admin'
+        })
+        .eq('id', id)
+        .select()
 
-      const result = await response.json()
+      if (error) {
+        console.error('Approval database error:', error)
+        throw new Error(error.message || 'Failed to approve application')
+      }
 
-      if (!response.ok) {
-        console.error('Approval API error:', result)
-        throw new Error(result.error || `Failed to approve application (${response.status})`)
+      if (!data || data.length === 0) {
+        throw new Error('Application not found or update failed')
       }
 
       // Update local state
@@ -169,24 +168,24 @@ export default function CafeteriaApprovals() {
   // Handle reject action
   const handleReject = async (id: string) => {
     try {
-      // Update status via API
-      const response = await fetch('/api/cafeteria-applications', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          applicationId: id,
+      // Update status directly in Supabase
+      const { data, error } = await supabase
+        .from('cafeteria_applications')
+        .update({
           status: 'rejected',
-          reviewNotes: 'Application rejected by admin'
-        }),
-      })
+          reviewed_at: new Date().toISOString(),
+          review_notes: 'Application rejected by admin'
+        })
+        .eq('id', id)
+        .select()
 
-      const result = await response.json()
+      if (error) {
+        console.error('Rejection database error:', error)
+        throw new Error(error.message || 'Failed to reject application')
+      }
 
-      if (!response.ok) {
-        console.error('Rejection API error:', result)
-        throw new Error(result.error || `Failed to reject application (${response.status})`)
+      if (!data || data.length === 0) {
+        throw new Error('Application not found or update failed')
       }
 
       // Update local state
