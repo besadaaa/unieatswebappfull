@@ -126,24 +126,22 @@ export default function CafeteriaApprovals() {
   // Handle approve action
   const handleApprove = async (id: string) => {
     try {
-      // Update status directly in Supabase
-      const { data, error } = await supabase
-        .from('cafeteria_applications')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          review_notes: 'Application approved by admin'
+      // Use the complete approval API endpoint
+      const response = await fetch('/api/admin/complete-approval', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationId: id
         })
-        .eq('id', id)
-        .select()
+      })
 
-      if (error) {
-        console.error('Approval database error:', error)
-        throw new Error(error.message || 'Failed to approve application')
-      }
+      const result = await response.json()
 
-      if (!data || data.length === 0) {
-        throw new Error('Application not found or update failed')
+      if (!response.ok) {
+        console.error('Complete approval API error:', result)
+        throw new Error(result.error || `Failed to complete approval process (${response.status})`)
       }
 
       // Update local state
@@ -151,9 +149,12 @@ export default function CafeteriaApprovals() {
 
       toast({
         title: "Cafeteria Approved",
-        description: "The cafeteria application has been approved successfully.",
+        description: `${result.data?.cafeteriaName || 'Cafeteria'} has been approved and user account created successfully.`,
         variant: "default",
       })
+
+      console.log('Approval completed:', result.data)
+
     } catch (error: any) {
       console.error('Error approving cafeteria:', error)
       toast({
