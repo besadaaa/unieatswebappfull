@@ -1,13 +1,13 @@
 // Report Generation API Endpoint
 import { NextRequest, NextResponse } from 'next/server'
-import { generatePDFReport, generateExcelReport } from '@/lib/report-generation'
+import { generatePDFReport, generateExcelReport, generateCSVReport } from '@/lib/report-generation'
 import { withRateLimit } from '@/lib/rate-limiting'
 
 async function handler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const reportType = searchParams.get('type') as 'financial' | 'orders' | 'inventory' | 'analytics'
-    const format = searchParams.get('format') as 'pdf' | 'excel'
+    const format = searchParams.get('format') as 'pdf' | 'excel' | 'csv'
     const cafeteriaId = searchParams.get('cafeteriaId')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -26,9 +26,9 @@ async function handler(request: NextRequest) {
       )
     }
 
-    if (!['pdf', 'excel'].includes(format)) {
+    if (!['pdf', 'excel', 'csv'].includes(format)) {
       return NextResponse.json(
-        { error: 'Invalid format. Must be pdf or excel' },
+        { error: 'Invalid format. Must be pdf, excel, or csv' },
         { status: 400 }
       )
     }
@@ -44,11 +44,13 @@ async function handler(request: NextRequest) {
 
     // Generate report
     let result: { success: boolean; blob?: Blob; error?: string }
-    
+
     if (format === 'pdf') {
       result = await generatePDFReport(reportType, cafeteriaId || undefined, dateRange)
-    } else {
+    } else if (format === 'excel') {
       result = await generateExcelReport(reportType, cafeteriaId || undefined, dateRange)
+    } else {
+      result = await generateCSVReport(reportType, cafeteriaId || undefined, dateRange)
     }
 
     if (!result.success || !result.blob) {
@@ -59,10 +61,21 @@ async function handler(request: NextRequest) {
     }
 
     // Set appropriate headers
-    const filename = `${reportType}-report-${new Date().toISOString().split('T')[0]}.${format === 'pdf' ? 'pdf' : 'xlsx'}`
-    const contentType = format === 'pdf' 
-      ? 'application/pdf' 
-      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    let fileExtension: string
+    let contentType: string
+
+    if (format === 'pdf') {
+      fileExtension = 'pdf'
+      contentType = 'application/pdf'
+    } else if (format === 'excel') {
+      fileExtension = 'xlsx'
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    } else {
+      fileExtension = 'csv'
+      contentType = 'text/csv'
+    }
+
+    const filename = `${reportType}-report-${new Date().toISOString().split('T')[0]}.${fileExtension}`
 
     return new NextResponse(result.blob, {
       headers: {

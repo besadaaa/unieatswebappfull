@@ -230,40 +230,70 @@ export default function Reports() {
   // Function to download a report
   const downloadReport = async (report: Report) => {
     try {
-      // Extract filename from file_url
-      const filename = report.file_url.split('/').pop()
-      if (!filename) {
-        throw new Error('Invalid file URL')
-      }
+      toast({
+        title: "Download Starting",
+        description: `Preparing ${report.name} for download...`,
+      })
 
-      // Make request to download API
-      const response = await fetch(report.file_url)
+      // Make request to download API with proper error handling
+      const downloadUrl = report.file_url.startsWith('http') ? report.file_url : `${window.location.origin}${report.file_url}`
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/octet-stream, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+        }
+      })
 
       if (!response.ok) {
-        throw new Error('Failed to download report')
+        const errorText = await response.text()
+        console.error('Download response error:', response.status, errorText)
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`)
+      }
+
+      // Get content type and determine file extension
+      const contentType = response.headers.get('content-type') || ''
+      let fileExtension = report.format.toLowerCase()
+
+      if (contentType.includes('pdf')) {
+        fileExtension = 'pdf'
+      } else if (contentType.includes('spreadsheetml') || contentType.includes('excel')) {
+        fileExtension = 'xlsx'
+      } else if (contentType.includes('csv')) {
+        fileExtension = 'csv'
       }
 
       // Create blob and download
       const blob = await response.blob()
+
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty')
+      }
+
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${report.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${report.format.toLowerCase()}`
+
+      // Create a proper filename
+      const timestamp = new Date().toISOString().split('T')[0]
+      const cleanName = report.name.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-')
+      link.download = `${cleanName}-${timestamp}.${fileExtension}`
+
+      // Trigger download
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
       toast({
-        title: "Download Started",
-        description: `${report.name} is being downloaded.`,
+        title: "Download Complete",
+        description: `${report.name} has been downloaded successfully.`,
       })
 
     } catch (error) {
       console.error('Error downloading report:', error)
       toast({
         title: "Download Failed",
-        description: "Failed to download the report. Please try again.",
+        description: error.message || "Failed to download the report. Please try again.",
         variant: "destructive",
       })
     }

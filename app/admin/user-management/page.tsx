@@ -51,6 +51,12 @@ export default function UserManagement() {
   const [showAddUserDialog, setShowAddUserDialog] = useState(false)
   const [showEditUserDialog, setShowEditUserDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showRevocationDialog, setShowRevocationDialog] = useState(false)
+  const [revocationData, setRevocationData] = useState<{
+    user: User | null,
+    cafeterias: Array<{id: string, name: string}>,
+    canDelete: boolean
+  }>({ user: null, cafeterias: [], canDelete: false })
   const [showBulkActionsDialog, setShowBulkActionsDialog] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isExporting, setIsExporting] = useState(false)
@@ -74,73 +80,70 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
 
   // Load users from API
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        setLoading(true)
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
 
-        // Fetch users from our API endpoint
-        const response = await fetch('/api/users')
-        const data = await response.json()
+      // Fetch users from our API endpoint
+      const response = await fetch('/api/users')
+      const data = await response.json()
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch users')
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch users')
+      }
+
+      // Format users for the UI with better name handling
+      const formattedUsers = data.users?.map((user: any) => {
+        // Better name extraction logic
+        let displayName = 'Unknown User'
+        if (user.full_name && user.full_name.trim()) {
+          displayName = user.full_name.trim()
+        } else if (user.email) {
+          // Extract name from email (before @)
+          const emailName = user.email.split('@')[0]
+          displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1).replace(/[._]/g, ' ')
         }
 
-        // Format users for the UI with better name handling
-        const formattedUsers = data.users?.map((user: any) => {
-          // Better name extraction logic
-          let displayName = 'Unknown User'
-          if (user.full_name && user.full_name.trim()) {
-            displayName = user.full_name.trim()
-          } else if (user.email) {
-            // Extract name from email (before @)
-            const emailName = user.email.split('@')[0]
-            displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1).replace(/[._]/g, ' ')
-          }
+        return {
+          id: user.id,
+          name: displayName,
+          email: user.email || 'No email',
+          role: user.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
+                user.role === 'admin' ? 'Admin' :
+                user.role === 'student' ? 'Student' : user.role || 'No role',
+          status: user.email_confirmed_at ? 'Active' : 'Pending',
+          cafeteria: '-', // We'll need to add cafeteria lookup later
+          lastActive: user.last_sign_in_at ?
+            new Date(user.last_sign_in_at).toLocaleDateString() :
+            user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Never',
+          image: "/diverse-group-city.png",
+          // Additional fields for detailed view
+          full_name: user.full_name || displayName,
+          phone: user.phone,
+          theme: user.theme,
+          notification_enabled: user.notification_enabled,
+          email_confirmed_at: user.email_confirmed_at,
+          last_sign_in_at: user.last_sign_in_at,
+        }
+      }) || []
 
-          return {
-            id: user.id,
-            name: displayName,
-            email: user.email || 'No email',
-            role: user.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
-                  user.role === 'admin' ? 'Admin' :
-                  user.role === 'student' ? 'Student' : user.role || 'No role',
-            status: user.email_confirmed_at ? 'Active' : 'Pending',
-            cafeteria: '-', // We'll need to add cafeteria lookup later
-            lastActive: user.last_sign_in_at ?
-              new Date(user.last_sign_in_at).toLocaleDateString() :
-              user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Never',
-            image: "/diverse-group-city.png",
-            // Additional fields for detailed view
-            full_name: user.full_name || displayName,
-            phone: user.phone,
-            theme: user.theme,
-            notification_enabled: user.notification_enabled,
-            email_confirmed_at: user.email_confirmed_at,
-            last_sign_in_at: user.last_sign_in_at,
-          }
-        }) || []
+      setUsers(formattedUsers)
 
-        setUsers(formattedUsers)
+      console.log(`Loaded ${formattedUsers.length} users (${data.auth_users_count} auth users, ${data.profiles_count} profiles)`)
 
-        toast({
-          title: "Users loaded",
-          description: `Loaded ${formattedUsers.length} users (${data.auth_users_count} auth users, ${data.profiles_count} profiles)`,
-        })
-
-      } catch (error: any) {
-        console.error('Error loading users:', error)
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load users. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+    } catch (error: any) {
+      console.error('Error loading users:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load users. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     loadUsers()
   }, [])
 
@@ -202,72 +205,39 @@ export default function UserManagement() {
     })
 
     try {
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.name,
-            role: formData.role,
-          }
-        }
+      // Create user using the API endpoint
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.name,
+          role: formData.role,
+          phone: formData.phone || null,
+          status: formData.status
+        })
       })
 
-      if (authError) {
-        throw authError
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create user')
       }
 
-      if (authData.user) {
-        // Create/update profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: authData.user.id,
-            email: formData.email,
-            full_name: formData.name,
-            role: formData.role,
-            status: formData.status,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+      // Reload users from API
+      await loadUsers()
 
-        if (profileError) {
-          throw profileError
-        }
+      setShowAddUserDialog(false)
+      resetForm()
 
-        // Reload users
-        const { data: profiles, error: fetchError } = await supabase
-          .from('profiles')
-          .select(`
-            *,
-            cafeterias!cafeterias_owner_id_fkey(name)
-          `)
-          .order('created_at', { ascending: false })
+      toast({
+        title: "User added successfully",
+        description: `${formData.name} has been added as a ${formData.role}.`,
+      })
 
-        if (!fetchError && profiles) {
-          const formattedUsers = profiles.map((profile: any) => ({
-            id: profile.id,
-            name: profile.full_name || profile.email?.split('@')[0] || 'Unknown',
-            email: profile.email || 'No email',
-            role: profile.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
-                  profile.role === 'admin' ? 'Admin' : 'Student',
-            status: profile.status === 'active' ? 'Active' : 'Inactive',
-            cafeteria: profile.cafeterias?.name || '-',
-            lastActive: new Date(profile.last_sign_in_at || profile.updated_at).toLocaleDateString(),
-            image: profile.avatar_url || "/diverse-group-city.png",
-          }))
-          setUsers(formattedUsers)
-        }
-
-        setShowAddUserDialog(false)
-        resetForm()
-
-        toast({
-          title: "User added successfully",
-          description: `${formData.name} has been added as a ${formData.role}.`,
-        })
-      }
     } catch (error: any) {
       console.error('Error adding user:', error)
       toast({
@@ -306,7 +276,7 @@ export default function UserManagement() {
           updates: {
             full_name: formData.name,
             role: formData.role,
-            phone: formData.phone || null,
+            phone: formData.phone || null
           }
         })
       })
@@ -317,23 +287,9 @@ export default function UserManagement() {
         throw new Error(data.error || 'Failed to update user')
       }
 
-      // Update local state
-      const updatedUsers = users.map((user) => {
-        if (user.id === currentUser.id) {
-          return {
-            ...user,
-            name: formData.name,
-            role: formData.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
-                  formData.role === 'admin' ? 'Admin' :
-                  formData.role === 'student' ? 'Student' : formData.role,
-            full_name: formData.name,
-            phone: formData.phone,
-          }
-        }
-        return user
-      })
+      // Reload users from API to get fresh data
+      await loadUsers()
 
-      setUsers(updatedUsers)
       setShowEditUserDialog(false)
       resetForm()
 
@@ -352,7 +308,7 @@ export default function UserManagement() {
   }
 
   // Handle deleting a user
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = async (force = false) => {
     if (!currentUser) return
 
     // Show loading state
@@ -362,29 +318,148 @@ export default function UserManagement() {
     })
 
     try {
-      const response = await fetch(`/api/users?userId=${currentUser.id}`, {
+      const url = force
+        ? `/api/users?userId=${currentUser.id}&force=true`
+        : `/api/users?userId=${currentUser.id}`
+
+      const response = await fetch(url, {
         method: 'DELETE',
       })
 
       const data = await response.json()
 
       if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 403) {
+          // Admin deletion blocked
+          toast({
+            title: "Cannot delete admin",
+            description: data.message || "Admin users cannot be deleted for security reasons.",
+            variant: "destructive",
+          })
+          setShowDeleteDialog(false)
+          return
+        }
+
+        if (response.status === 409 && data.requiresRevocation) {
+          // Cafeteria owner with active cafeterias
+          setRevocationData({
+            user: currentUser,
+            cafeterias: data.cafeterias || [],
+            canDelete: false
+          })
+          setShowDeleteDialog(false)
+          setShowRevocationDialog(true)
+          return
+        }
+
         throw new Error(data.error || 'Failed to delete user')
       }
 
-      const updatedUsers = users.filter((user) => user.id !== currentUser.id)
-      setUsers(updatedUsers)
+      // Success - reload users and close dialog
+      await loadUsers()
       setShowDeleteDialog(false)
 
       toast({
         title: "User deleted successfully",
-        description: `${currentUser.name} has been removed from the system.`,
+        description: data.message || `${currentUser.name} has been removed from the system.`,
       })
     } catch (error: any) {
       console.error('Error deleting user:', error)
       toast({
         title: "Error deleting user",
         description: error.message || "There was a problem deleting the user. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Handle revoking cafeteria approvals
+  const handleRevokeCafeterias = async () => {
+    if (!revocationData.user) return
+
+    try {
+      toast({
+        title: "Revoking cafeteria approvals",
+        description: "Please wait while we revoke the cafeteria approvals...",
+      })
+
+      const response = await fetch('/api/admin/revoke-cafeteria', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: revocationData.user.id,
+          reason: 'Revoked to allow user deletion'
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to revoke cafeteria approvals')
+      }
+
+      toast({
+        title: "Cafeteria approvals revoked",
+        description: `Successfully revoked ${data.revokedCafeterias?.length || 0} cafeteria(s). You can now delete the user.`,
+      })
+
+      // Update the revocation data to allow deletion
+      setRevocationData(prev => ({ ...prev, canDelete: true }))
+
+    } catch (error: any) {
+      console.error('Error revoking cafeterias:', error)
+      toast({
+        title: "Error revoking cafeterias",
+        description: error.message || "Failed to revoke cafeteria approvals. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Handle restoring cafeteria approvals
+  const handleRestoreCafeterias = async () => {
+    if (!revocationData.user) return
+
+    try {
+      toast({
+        title: "Restoring cafeteria approvals",
+        description: "Please wait while we restore the cafeteria approvals...",
+      })
+
+      const response = await fetch('/api/admin/revoke-cafeteria', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: revocationData.user.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to restore cafeteria approvals')
+      }
+
+      toast({
+        title: "Cafeteria approvals restored",
+        description: `Successfully restored ${data.restoredCafeterias?.length || 0} cafeteria(s).`,
+      })
+
+      // Close the dialog and refresh users
+      setShowRevocationDialog(false)
+      setRevocationData({ user: null, cafeterias: [], canDelete: false })
+      await loadUsers()
+
+    } catch (error: any) {
+      console.error('Error restoring cafeterias:', error)
+      toast({
+        title: "Error restoring cafeterias",
+        description: error.message || "Failed to restore cafeteria approvals. Please try again.",
         variant: "destructive",
       })
     }
@@ -1017,9 +1092,89 @@ export default function UserManagement() {
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteUser}>
+            <Button variant="destructive" onClick={() => handleDeleteUser()}>
               Delete
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cafeteria Revocation Dialog */}
+      <Dialog open={showRevocationDialog} onOpenChange={setShowRevocationDialog}>
+        <DialogContent className="bg-[#1a1f36] border-gray-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-orange-400">Cannot Delete Cafeteria Owner</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              This user owns active cafeterias that must be revoked first.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="mb-4">
+              <h4 className="font-medium text-white mb-2">Active Cafeterias:</h4>
+              <ul className="space-y-1">
+                {revocationData.cafeterias.map((cafeteria) => (
+                  <li key={cafeteria.id} className="text-sm text-gray-300 bg-gray-800 px-3 py-1 rounded">
+                    {cafeteria.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-200">
+                <strong>Note:</strong> Revoking cafeteria approvals will temporarily disable these cafeterias.
+                You can restore them later if needed.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col space-y-2">
+            {!revocationData.canDelete ? (
+              <>
+                <div className="flex gap-2 w-full">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRevocationDialog(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRevokeCafeterias}
+                    className="bg-orange-600 hover:bg-orange-700 text-white flex-1"
+                  >
+                    Revoke Cafeterias
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-center text-green-400 text-sm mb-2">
+                  ✅ Cafeterias revoked. You can now delete the user or restore the cafeterias.
+                </div>
+                <div className="flex gap-2 w-full">
+                  <Button
+                    onClick={handleRestoreCafeterias}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Restore Cafeterias
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowRevocationDialog(false)
+                      setCurrentUser(revocationData.user)
+                      handleDeleteUser(true)
+                    }}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    Delete User
+                  </Button>
+                </div>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
