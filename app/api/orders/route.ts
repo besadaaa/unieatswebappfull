@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
-import { auditLogger, getClientIP, getUserAgent } from '@/lib/audit-logger'
+import { getAuditLogger, getClientIP, getUserAgent } from '@/lib/audit-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -210,6 +210,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Log the data access for audit purposes
+    const auditLogger = getAuditLogger()
     await auditLogger.log({
       action: 'data_exported',
       details: `Accessed orders data - Status: ${status || 'all'}, Count: ${processedOrders.length}`,
@@ -236,6 +237,7 @@ export async function GET(request: NextRequest) {
     console.error('Error in orders API:', error)
 
     // Log the error for audit purposes
+    const auditLogger = getAuditLogger()
     await auditLogger.logSecurity(
       'unauthorized_access',
       `Failed to access orders API: ${error instanceof Error ? error.message : 'Unknown error'}`,

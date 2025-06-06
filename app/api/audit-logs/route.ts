@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
-import { auditLogger, getClientIP, getUserAgent } from '@/lib/audit-logger'
+import { getAuditLogger, getClientIP, getUserAgent } from '@/lib/audit-logger'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if we're in build time
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Service not available during build' }, { status: 503 })
+    }
+
     const supabaseAdmin = createSupabaseAdmin()
     const { searchParams } = new URL(request.url)
     
@@ -131,6 +136,7 @@ export async function POST(request: NextRequest) {
     const user_agent = getUserAgent(request)
 
     // Log the audit event
+    const auditLogger = getAuditLogger()
     const success = await auditLogger.log({
       user_email,
       user_role,
@@ -158,6 +164,11 @@ export async function POST(request: NextRequest) {
 // GET audit log statistics
 export async function PUT(request: NextRequest) {
   try {
+    // Check if we're in build time
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Service not available during build' }, { status: 503 })
+    }
+
     const supabaseAdmin = createSupabaseAdmin()
     
     // Get statistics

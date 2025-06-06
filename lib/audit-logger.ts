@@ -31,7 +31,7 @@ export type AuditAction =
 
 export class AuditLogger {
   private static instance: AuditLogger
-  private supabase = createSupabaseAdmin()
+  private supabase: any = null
 
   private constructor() {}
 
@@ -42,12 +42,24 @@ export class AuditLogger {
     return AuditLogger.instance
   }
 
+  private getSupabase() {
+    if (!this.supabase) {
+      // Only create admin client when actually needed and env vars are available
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY not available')
+      }
+      this.supabase = createSupabaseAdmin()
+    }
+    return this.supabase
+  }
+
   /**
    * Log an audit event
    */
   public async log(entry: AuditLogEntry): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const supabase = this.getSupabase()
+      const { error } = await supabase
         .from('audit_logs')
         .insert([{
           user_id: entry.user_id || null,
@@ -177,8 +189,8 @@ export class AuditLogger {
   }
 }
 
-// Export singleton instance
-export const auditLogger = AuditLogger.getInstance()
+// Export function to get singleton instance (lazy initialization)
+export const getAuditLogger = () => AuditLogger.getInstance()
 
 // Helper function to get client IP address
 export function getClientIP(request: Request): string | undefined {
