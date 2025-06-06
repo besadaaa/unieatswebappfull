@@ -63,16 +63,22 @@ export default function CafeteriaApprovals() {
       try {
         setLoading(true)
 
-        // Fetch cafeteria applications directly from Supabase
-        const { data: applications, error } = await supabase
-          .from('cafeteria_applications')
-          .select('*')
-          .order('created_at', { ascending: false })
+        // Fetch cafeteria applications via simple API endpoint
+        const response = await fetch('/api/cafeteria-applications-simple')
 
-        if (error) {
-          console.error('Error fetching cafeteria applications:', error)
-          throw new Error(error.message || 'Failed to load applications')
+        if (!response.ok) {
+          throw new Error(`Failed to fetch applications: ${response.status}`)
         }
+
+        const data = await response.json()
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load applications')
+        }
+
+        const applications = data.applications
+
+
 
         // Format applications for the UI
         const formattedApplications = applications?.map((application: any) => ({
@@ -126,22 +132,24 @@ export default function CafeteriaApprovals() {
   // Handle approve action
   const handleApprove = async (id: string) => {
     try {
-      // Use the complete approval API endpoint
-      const response = await fetch('/api/admin/complete-approval', {
-        method: 'POST',
+      // Use the simple approval API endpoint
+      const response = await fetch('/api/cafeteria-applications-simple', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          applicationId: id
+          applicationId: id,
+          status: 'approved',
+          reviewNotes: 'Application approved by admin'
         })
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        console.error('Complete approval API error:', result)
-        throw new Error(result.error || `Failed to complete approval process (${response.status})`)
+        console.error('Simple approval API error:', result)
+        throw new Error(result.error || `Failed to approve application (${response.status})`)
       }
 
       // Update local state
@@ -149,11 +157,11 @@ export default function CafeteriaApprovals() {
 
       toast({
         title: "Cafeteria Approved",
-        description: `${result.data?.cafeteriaName || 'Cafeteria'} has been approved and user account created successfully.`,
+        description: "The cafeteria application has been approved successfully.",
         variant: "default",
       })
 
-      console.log('Approval completed:', result.data)
+      console.log('Approval completed:', result)
 
     } catch (error: any) {
       console.error('Error approving cafeteria:', error)
@@ -169,24 +177,24 @@ export default function CafeteriaApprovals() {
   // Handle reject action
   const handleReject = async (id: string) => {
     try {
-      // Update status directly in Supabase
-      const { data, error } = await supabase
-        .from('cafeteria_applications')
-        .update({
+      // Use the simple rejection API endpoint
+      const response = await fetch('/api/cafeteria-applications-simple', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationId: id,
           status: 'rejected',
-          reviewed_at: new Date().toISOString(),
-          review_notes: 'Application rejected by admin'
+          reviewNotes: 'Application rejected by admin'
         })
-        .eq('id', id)
-        .select()
+      })
 
-      if (error) {
-        console.error('Rejection database error:', error)
-        throw new Error(error.message || 'Failed to reject application')
-      }
+      const result = await response.json()
 
-      if (!data || data.length === 0) {
-        throw new Error('Application not found or update failed')
+      if (!response.ok) {
+        console.error('Simple rejection API error:', result)
+        throw new Error(result.error || `Failed to reject application (${response.status})`)
       }
 
       // Update local state
