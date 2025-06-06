@@ -57,48 +57,45 @@ export default function CafeteriaApprovals() {
   // Real cafeteria applications data from Supabase
   const [cafeteriaApplications, setCafeteriaApplications] = useState<CafeteriaApplication[]>([])
 
-  // Load cafeteria applications from Supabase
+  // Load cafeteria applications from API
   useEffect(() => {
     const loadCafeteriaApplications = async () => {
       try {
         setLoading(true)
 
-        // Fetch cafeteria applications
-        const { data: applications, error } = await supabase
-          .from('cafeteria_applications')
-          .select('*')
-          .order('submitted_at', { ascending: false })
+        // Fetch cafeteria applications via API
+        const response = await fetch('/api/cafeteria-applications')
 
-        if (error) {
-          console.error('Error fetching cafeterias:', error)
-          toast({
-            title: "Error",
-            description: "Failed to load cafeteria applications. Please try again.",
-            variant: "destructive",
-          })
-          return
+        if (!response.ok) {
+          throw new Error(`Failed to fetch applications: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load applications')
         }
 
         // Format applications for the UI
-        const formattedApplications = applications?.map((application: any) => ({
+        const formattedApplications = data.applications?.map((application: any) => ({
           id: application.id,
-          name: application.business_name || 'Unknown Business',
-          location: application.location || 'Location not specified',
+          name: application.business_name || application.cafeteria_name || 'Unknown Business',
+          location: application.location || application.cafeteria_location || 'Location not specified',
           status: application.status || 'pending',
-          owner: application.owner_name || 'Unknown Owner',
-          email: application.contact_email || 'No email',
-          phone: application.contact_phone || 'No phone',
+          owner: application.owner_name || `${application.owner_first_name || ''} ${application.owner_last_name || ''}`.trim() || 'Unknown Owner',
+          email: application.contact_email || application.email || 'No email',
+          phone: application.contact_phone || application.phone || 'No phone',
           website: application.website || 'No website',
           submittedDate: application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : 'Unknown',
-          description: application.description || 'No description provided',
+          description: application.description || application.cafeteria_description || 'No description provided',
         })) || []
 
         setCafeteriaApplications(formattedApplications)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading cafeteria applications:', error)
         toast({
           title: "Error",
-          description: "Failed to load cafeteria applications. Please try again.",
+          description: error.message || "Failed to load cafeteria applications. Please try again.",
           variant: "destructive",
         })
       } finally {
@@ -146,7 +143,8 @@ export default function CafeteriaApprovals() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to approve application')
+        console.error('Approval API error:', result)
+        throw new Error(result.error || `Failed to approve application (${response.status})`)
       }
 
       // Update local state
@@ -187,7 +185,8 @@ export default function CafeteriaApprovals() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to reject application')
+        console.error('Rejection API error:', result)
+        throw new Error(result.error || `Failed to reject application (${response.status})`)
       }
 
       // Update local state
