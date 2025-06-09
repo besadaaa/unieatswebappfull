@@ -14,11 +14,16 @@ export async function GET(request: NextRequest) {
 
     console.log('🏪 Fetching cafeteria metrics for:', cafeteriaId, 'Time range:', timeRange)
 
-    // Calculate date range based on timeRange using UTC to avoid timezone issues
+    // Calculate date range based on timeRange using local timezone for accurate "today"
     const now = new Date()
     let startDateStr: string
     const endDateStr = now.toISOString()
-    const todayStr = new Date().toISOString().split('T')[0]
+
+    // Get today's date in local timezone (not UTC) to fix timezone issues
+    const today = new Date()
+    const todayStr = today.getFullYear() + '-' +
+                    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(today.getDate()).padStart(2, '0')
 
     switch (timeRange) {
       case 'Today':
