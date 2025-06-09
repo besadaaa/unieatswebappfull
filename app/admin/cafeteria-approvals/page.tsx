@@ -125,96 +125,53 @@ export default function CafeteriaApprovals() {
     rejected: cafeteriaApplications.filter((app) => app.status === "rejected").length,
   }
 
-  // Handle approve action - Direct database update (bypassing hanging API)
+  // Handle approve action - Complete approval workflow
   const handleApprove = async (id: string) => {
     try {
-      // Get the application details first
-      const { data: applicationData, error: fetchError } = await supabase
+      // Use the complete approval API endpoint
+      const response = await fetch('/api/admin/complete-approval', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationId: id
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to approve application')
+      }
+
+      // Reload applications to reflect the changes
+      const { data: updatedApplications, error: reloadError } = await supabase
         .from('cafeteria_applications')
         .select('*')
-        .eq('id', id)
-        .single()
+        .order('created_at', { ascending: false })
 
-      if (fetchError || !applicationData) {
-        throw new Error('Application not found')
+      if (!reloadError && updatedApplications) {
+        const formattedApplications = updatedApplications.map((app: any) => ({
+          id: app.id,
+          name: app.business_name || app.cafeteria_name || 'Unknown Business',
+          location: app.location || 'Unknown Location',
+          status: app.status as "pending" | "approved" | "rejected",
+          owner: `${app.owner_first_name || ''} ${app.owner_last_name || ''}`.trim() || 'Unknown Owner',
+          email: app.email || 'No email',
+          phone: app.phone || 'No phone',
+          website: app.website || 'No website',
+          submittedDate: app.created_at ? new Date(app.created_at).toLocaleDateString() : 'Unknown',
+          description: app.description || 'No description provided',
+          businessLicense: app.business_license,
+          contactPhone: app.contact_phone || app.phone,
+        }))
+        setCafeteriaApplications(formattedApplications)
       }
-
-      // Update application status directly in database
-      const { error: updateError } = await supabase
-        .from('cafeteria_applications')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          review_notes: 'Application approved by admin',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-
-      if (updateError) {
-        throw new Error(updateError.message || 'Failed to update application status')
-      }
-
-      // Create user account manually in auth.users (if needed)
-      try {
-        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-          email: applicationData.contact_email || applicationData.email,
-          password: applicationData.temp_password || 'TempPassword123!',
-          email_confirm: true,
-          user_metadata: {
-            first_name: applicationData.owner_first_name || 'Cafeteria',
-            last_name: applicationData.owner_last_name || 'Owner',
-            role: 'cafeteria_owner'
-          }
-        })
-
-        if (!authError && authUser?.user) {
-          // Create profile record
-          await supabase
-            .from('profiles')
-            .upsert({
-              id: authUser.user.id,
-              full_name: applicationData.owner_name || `${applicationData.owner_first_name} ${applicationData.owner_last_name}`,
-              first_name: applicationData.owner_first_name,
-              last_name: applicationData.owner_last_name,
-              phone: applicationData.contact_phone || applicationData.phone,
-              role: 'cafeteria_owner',
-              status: 'active',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-
-          // Create cafeteria record
-          await supabase
-            .from('cafeterias')
-            .insert({
-              id: crypto.randomUUID(),
-              name: applicationData.business_name || applicationData.cafeteria_name,
-              location: applicationData.location || applicationData.cafeteria_location,
-              description: applicationData.description || applicationData.cafeteria_description,
-              owner_id: authUser.user.id,
-              contact_email: applicationData.contact_email || applicationData.email,
-              contact_phone: applicationData.contact_phone || applicationData.phone,
-              website: applicationData.website,
-              status: 'active',
-              approval_status: 'approved',
-              is_active: true,
-              is_open: true,
-              rating: 0,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-        }
-      } catch (authError) {
-        console.warn('User creation warning (may already exist):', authError)
-        // Continue even if user creation fails
-      }
-
-      // Update local state
-      setCafeteriaApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: "approved" } : app)))
 
       toast({
         title: "Cafeteria Approved",
-        description: "The cafeteria application has been approved and user account created successfully.",
+        description: `${result.data?.cafeteriaName || 'Cafeteria'} has been approved and user account created successfully.`,
         variant: "default",
       })
 

@@ -5,10 +5,12 @@ export interface TrendResult {
   volatility: number
   trendline: number[]
   slopePercentage: number
+  forecast?: number[]
+  forecastLabels?: string[]
 }
 
-// Function to calculate linear regression trendline
-export function calculateTrend(data: number[]): TrendResult {
+// Function to calculate linear regression trendline with forecasting
+export function calculateTrend(data: number[], forecastPeriods: number = 0): TrendResult {
   const n = data.length
 
   if (n < 2) {
@@ -18,6 +20,9 @@ export function calculateTrend(data: number[]): TrendResult {
       rSquared: 0,
       volatility: 0,
       trendline: [],
+      slopePercentage: 0,
+      forecast: [],
+      forecastLabels: []
     }
   }
 
@@ -61,6 +66,19 @@ export function calculateTrend(data: number[]): TrendResult {
     trendline.push(slope * (i + 1) + intercept)
   }
 
+  // Generate forecast data if requested
+  const forecast: number[] = []
+  const forecastLabels: string[] = []
+  if (forecastPeriods > 0) {
+    for (let i = 1; i <= forecastPeriods; i++) {
+      const forecastValue = slope * (n + i) + intercept
+      // Add some realistic variance to forecast (±10% based on volatility)
+      const variance = volatility * (ySum / n) * 0.1 * (Math.random() - 0.5)
+      forecast.push(Math.max(0, forecastValue + variance))
+      forecastLabels.push(`Day +${i}`)
+    }
+  }
+
   return {
     slope,
     intercept,
@@ -68,5 +86,7 @@ export function calculateTrend(data: number[]): TrendResult {
     volatility,
     trendline,
     slopePercentage: (slope / (ySum / n)) * 100,
+    forecast,
+    forecastLabels
   }
 }

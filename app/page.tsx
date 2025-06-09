@@ -287,8 +287,8 @@ export default function LandingPage() {
                         <Input
                           id="cafeteria-email"
                           name="email"
-                          defaultValue="cafeteria@unieats.com"
-                          placeholder="cafeteria@unieats.com"
+                          defaultValue="ayaawad@unieats.com"
+                          placeholder="ayaawad@unieats.com"
                           className="glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern h-12 transition-all duration-300"
                         />
                       </div>

@@ -102,33 +102,60 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   // Calculate trend analysis
   useEffect(() => {
     if (normalizedData && normalizedData.length > 1) {
-      setTrendResult(calculateTrend(normalizedData))
+      setTrendResult(calculateTrend(normalizedData, forecastPeriods))
     }
-  }, [normalizedData])
+  }, [normalizedData, forecastPeriods])
 
   const trendlineData = trendResult?.trendline || []
+  const forecastData = trendResult?.forecast || []
+  const forecastLabels = trendResult?.forecastLabels || []
+
+  // Combine labels for chart (actual + forecast)
+  const allLabels = [...normalizedLabels, ...forecastLabels]
+
+  // Prepare datasets with forecast
+  const actualDataWithGaps = [...normalizedData, ...new Array(forecastLabels.length).fill(null)]
+  const trendlineWithForecast = [...trendlineData, ...forecastData]
+  const forecastDataWithGaps = [...new Array(normalizedData.length).fill(null), ...forecastData]
 
   const chartData = {
-    labels: normalizedLabels,
+    labels: allLabels,
     datasets: [
       {
         label: "Actual Data",
-        data: normalizedData,
+        data: actualDataWithGaps,
         borderColor: chartColors.getColor(0),
         backgroundColor: chartColors.getBackgroundColor(0),
         tension: 0.4,
         fill: true,
+        spanGaps: false,
       },
       ...(showTrendline && trendlineData.length > 0
         ? [
             {
               label: "Trend Line",
-              data: trendlineData,
+              data: trendlineWithForecast,
               borderColor: chartColors.getColor(1),
               borderWidth: 2,
               borderDash: [5, 5],
               fill: false,
               pointRadius: 0,
+            },
+          ]
+        : []),
+      ...(forecastPeriods > 0 && forecastData.length > 0
+        ? [
+            {
+              label: "Forecast",
+              data: forecastDataWithGaps,
+              borderColor: chartColors.getColor(2),
+              backgroundColor: chartColors.getBackgroundColor(2, 0.3),
+              borderWidth: 2,
+              borderDash: [10, 5],
+              fill: false,
+              pointRadius: 4,
+              pointStyle: 'triangle',
+              spanGaps: false,
             },
           ]
         : []),

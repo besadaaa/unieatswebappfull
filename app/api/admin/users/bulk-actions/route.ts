@@ -55,129 +55,81 @@ export async function POST(request: NextRequest) {
 
 async function handleSuspendUsers(supabase: any, userIds: string[], results: any) {
   try {
-    // Update user status to suspended
+    console.log('Attempting to suspend users:', userIds)
+
+    // Update user status by setting is_suspended to true
     const { data, error } = await supabase
       .from('profiles')
-      .update({ 
-        status: 'suspended',
+      .update({
+        is_suspended: true,
         updated_at: new Date().toISOString()
       })
       .in('id', userIds)
-      .select('id, full_name, email')
-    
+      .select('id, full_name')
+
     if (error) {
       console.error('Error suspending users:', error)
-      return NextResponse.json({ error: 'Failed to suspend users' }, { status: 500 })
+      return NextResponse.json({
+        error: 'Failed to suspend users',
+        details: error.message
+      }, { status: 500 })
     }
-    
+
+    console.log('Successfully updated users:', data)
     results.success = data?.length || 0
-    
-    // Log audit trail for each user
-    for (const user of data || []) {
-      await supabase
-        .from('audit_logs')
-        .insert({
-          action: 'user_suspended',
-          entity_type: 'user',
-          entity_id: user.id,
-          details: {
-            user_name: user.full_name,
-            user_email: user.email,
-            suspended_at: new Date().toISOString()
-          }
-        })
-      
-      // Send notification to mobile app users
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: user.id,
-          title: '🚫 Account Suspended',
-          message: 'Your account has been suspended. Please contact support at support@unieats.com or call +20 123 456 7890 for assistance.',
-          type: 'account_status',
-          is_read: false,
-          created_at: new Date().toISOString(),
-          data: JSON.stringify({
-            action: 'account_suspended',
-            support_email: 'support@unieats.com',
-            support_phone: '+201234567890',
-            suspended_at: new Date().toISOString()
-          })
-        })
-    }
-    
+
     return NextResponse.json({
       success: true,
       message: `Successfully suspended ${results.success} users`,
       results
     })
-    
+
   } catch (error) {
     console.error('Error in suspend users:', error)
-    return NextResponse.json({ error: 'Failed to suspend users' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Failed to suspend users',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
 async function handleUnsuspendUsers(supabase: any, userIds: string[], results: any) {
   try {
-    // Update user status to active
+    console.log('Attempting to unsuspend users:', userIds)
+
+    // Reactivate user by setting is_suspended to false
     const { data, error } = await supabase
       .from('profiles')
-      .update({ 
-        status: 'active',
+      .update({
+        is_suspended: false,
         updated_at: new Date().toISOString()
       })
       .in('id', userIds)
-      .select('id, full_name, email')
-    
+      .select('id, full_name')
+
     if (error) {
       console.error('Error unsuspending users:', error)
-      return NextResponse.json({ error: 'Failed to unsuspend users' }, { status: 500 })
+      return NextResponse.json({
+        error: 'Failed to unsuspend users',
+        details: error.message
+      }, { status: 500 })
     }
-    
+
+    console.log('Successfully updated users:', data)
     results.success = data?.length || 0
-    
-    // Log audit trail for each user
-    for (const user of data || []) {
-      await supabase
-        .from('audit_logs')
-        .insert({
-          action: 'user_unsuspended',
-          entity_type: 'user',
-          entity_id: user.id,
-          details: {
-            user_name: user.full_name,
-            user_email: user.email,
-            unsuspended_at: new Date().toISOString()
-          }
-        })
-      
-      // Send welcome back notification to mobile app users
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: user.id,
-          title: '✅ Account Reactivated',
-          message: 'Great news! Your account has been reactivated. Welcome back to UniEats! You can now access all features.',
-          type: 'account_status',
-          is_read: false,
-          created_at: new Date().toISOString(),
-          data: JSON.stringify({
-            action: 'account_reactivated',
-            reactivated_at: new Date().toISOString()
-          })
-        })
-    }
-    
+
     return NextResponse.json({
       success: true,
       message: `Successfully unsuspended ${results.success} users`,
       results
     })
-    
+
   } catch (error) {
     console.error('Error in unsuspend users:', error)
-    return NextResponse.json({ error: 'Failed to unsuspend users' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Failed to unsuspend users',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

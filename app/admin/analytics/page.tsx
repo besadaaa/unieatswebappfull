@@ -778,9 +778,9 @@ function AnalyticsPageContent() {
         <div className="flex flex-wrap gap-3">
           <Button
             variant={
-              !dateRange ||
-              (dateRange.from?.getDate() === predefinedRanges.last7Days.from.getDate() &&
-                dateRange.to?.getDate() === predefinedRanges.last7Days.to.getDate())
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.last7Days.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.last7Days.to.toDateString()
                 ? "secondary"
                 : "outline"
             }
@@ -792,38 +792,71 @@ function AnalyticsPageContent() {
           </Button>
           <Button
             variant={
-              dateRange?.from?.getDate() === predefinedRanges.last30Days.from.getDate() ? "secondary" : "outline"
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.last30Days.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.last30Days.to.toDateString()
+                ? "secondary"
+                : "outline"
             }
             size="sm"
             onClick={() => selectPredefinedRange(predefinedRanges.last30Days)}
+            className="glass-effect border-white/20 hover:border-blue-500/50 btn-modern"
           >
             Last 30 Days
           </Button>
           <Button
-            variant={dateRange?.from?.getDate() === predefinedRanges.thisMonth.from.getDate() ? "secondary" : "outline"}
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.thisMonth.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.thisMonth.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
             size="sm"
             onClick={() => selectPredefinedRange(predefinedRanges.thisMonth)}
+            className="glass-effect border-white/20 hover:border-green-500/50 btn-modern"
           >
             This Month
           </Button>
           <Button
-            variant={dateRange?.from?.getDate() === predefinedRanges.lastMonth.from.getDate() ? "secondary" : "outline"}
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.lastMonth.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.lastMonth.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
             size="sm"
             onClick={() => selectPredefinedRange(predefinedRanges.lastMonth)}
+            className="glass-effect border-white/20 hover:border-green-500/50 btn-modern"
           >
             Last Month
           </Button>
           <Button
-            variant={dateRange?.from?.getDate() === predefinedRanges.today.from.getDate() ? "secondary" : "outline"}
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.today.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.today.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
             size="sm"
             onClick={() => selectPredefinedRange(predefinedRanges.today)}
+            className="glass-effect border-white/20 hover:border-yellow-500/50 btn-modern"
           >
             Today
           </Button>
           <Button
-            variant={dateRange?.from?.getDate() === predefinedRanges.yesterday.from.getDate() ? "secondary" : "outline"}
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.yesterday.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.yesterday.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
             size="sm"
             onClick={() => selectPredefinedRange(predefinedRanges.yesterday)}
+            className="glass-effect border-white/20 hover:border-yellow-500/50 btn-modern"
           >
             Yesterday
           </Button>

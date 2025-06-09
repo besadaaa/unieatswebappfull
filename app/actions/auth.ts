@@ -31,37 +31,54 @@ export async function signIn(formData: FormData) {
     // Get user profile from your profiles table
     console.log('🔍 Looking for profile:', { userId: data.user.id, role })
 
-    // First, let's see what profile exists for this user
-    const { data: allProfiles, error: allProfilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-
-    console.log('📋 All profiles for user:', allProfiles)
-    console.log('📋 Profile lookup error (if any):', allProfilesError)
-
+    // First, get the user's profile without role filtering
     const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
-      .eq('role', role)
       .single()
 
+    console.log('📋 Profile lookup result:', { userProfile, profileError })
+
     if (profileError || !userProfile) {
-      console.error('❌ Profile lookup failed:', { profileError, userProfile, expectedRole: role })
-      // Sign out if role doesn't match
+      console.error('❌ Profile not found:', { profileError, userId: data.user.id })
       await supabase.auth.signOut()
-      return { success: false, message: "Invalid role for this user" }
+      return { success: false, message: "User profile not found. Please contact support." }
+    }
+
+    // Check if the user's role matches the expected role
+    if (userProfile.role !== role) {
+      console.error('❌ Role mismatch:', {
+        userRole: userProfile.role,
+        expectedRole: role,
+        userEmail: data.user.email
+      })
+      await supabase.auth.signOut()
+      return {
+        success: false,
+        message: `Invalid role. Expected: ${role}, but user has: ${userProfile.role}`
+      }
     }
 
     // Check if user is suspended
-    if (userProfile.status === 'suspended') {
-      console.log('🚫 User is suspended:', userProfile.email)
+    if (userProfile.is_suspended) {
+      console.log('🚫 User is suspended:', data.user.email)
       await supabase.auth.signOut()
       return {
         success: false,
         message: "Your account has been suspended. Please contact support for assistance.",
         suspended: true
+      }
+    }
+
+    // Check if user account is active (for cafeteria managers)
+    if (userProfile.role === 'cafeteria_manager' && userProfile.is_active === false) {
+      console.log('⏳ User account is pending approval:', data.user.email)
+      await supabase.auth.signOut()
+      return {
+        success: false,
+        message: "Your cafeteria application is still pending approval. You will be able to login once an admin approves your application.",
+        pending: true
       }
     }
 
@@ -185,8 +202,15 @@ export async function getCurrentUserSession() {
     if (!profile) return null
 
     // Check if user is suspended
-    if (profile.status === 'suspended') {
-      console.log('🚫 Suspended user detected, signing out:', profile.email)
+    if (profile.is_suspended) {
+      console.log('🚫 Suspended user detected, signing out:', user.email)
+      await supabase.auth.signOut()
+      return null
+    }
+
+    // Check if user account is inactive (for cafeteria managers)
+    if (profile.role === 'cafeteria_manager' && profile.is_active === false) {
+      console.log('⏳ Inactive user detected, signing out:', user.email)
       await supabase.auth.signOut()
       return null
     }

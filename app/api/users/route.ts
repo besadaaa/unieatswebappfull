@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get all profiles
+    // Get all profiles (without join first to avoid issues)
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('*')
@@ -30,9 +30,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Get all cafeterias separately
+    const { data: allCafeterias, error: cafeteriasError } = await supabaseAdmin
+      .from('cafeterias')
+      .select('id, name, approval_status, owner_id')
+
+    if (cafeteriasError) {
+      console.error('Error fetching cafeterias:', cafeteriasError)
+      // Continue without cafeteria data rather than failing
+    }
+
     // Combine auth users with their profiles
     const combinedUsers = authUsers.users.map(authUser => {
       const profile = profiles?.find(p => p.id === authUser.id)
+
+      // Get cafeteria information for this user
+      const userCafeterias = allCafeterias?.filter(c => c.owner_id === authUser.id) || []
+      const approvedCafeterias = userCafeterias.filter(c => c.approval_status === 'approved')
+      const cafeteriaName = approvedCafeterias.length > 0
+        ? approvedCafeterias.map(c => c.name).join(', ')
+        : (userCafeterias.length > 0 ? `${userCafeterias[0].name} (Pending)` : null)
+
       return {
         id: authUser.id,
         email: authUser.email,
@@ -40,15 +58,20 @@ export async function GET(request: NextRequest) {
         created_at: authUser.created_at,
         last_sign_in_at: authUser.last_sign_in_at,
         // Profile data
-        full_name: profile?.full_name || authUser.user_metadata?.full_name || 'No name',
+        full_name: profile?.full_name || authUser.user_metadata?.full_name || null,
         role: profile?.role || 'student',
         phone: profile?.phone || null,
         theme: profile?.theme || 'light',
         notification_enabled: profile?.notification_enabled || false,
         is_active: profile?.is_active !== false,
+        is_suspended: profile?.is_suspended || false,
         avatar_url: profile?.avatar_url || null,
         profile_created_at: profile?.created_at || null,
         status: profile?.is_active !== false ? 'active' : 'inactive',
+        // Cafeteria data
+        cafeteria_name: cafeteriaName,
+        cafeterias_count: userCafeterias.length,
+        approved_cafeterias_count: approvedCafeterias.length
       }
     })
 
@@ -57,23 +80,36 @@ export async function GET(request: NextRequest) {
       !authUsers.users.some(authUser => authUser.id === profile.id)
     ) || []
 
-    const orphanedProfiles = profilesWithoutAuth.map(profile => ({
-      id: profile.id,
-      email: 'No email (orphaned profile)',
-      email_confirmed_at: null,
-      created_at: null,
-      last_sign_in_at: null,
-      // Profile data
-      full_name: profile.full_name || 'No name',
-      role: profile.role || 'student',
-      phone: profile.phone || null,
-      theme: profile.theme || 'light',
-      notification_enabled: profile.notification_enabled || false,
-      is_active: profile.is_active !== false,
-      avatar_url: profile.avatar_url || null,
-      profile_created_at: profile.created_at || null,
-      status: profile.is_active !== false ? 'active' : 'inactive',
-    }))
+    const orphanedProfiles = profilesWithoutAuth.map(profile => {
+      const userCafeterias = allCafeterias?.filter(c => c.owner_id === profile.id) || []
+      const approvedCafeterias = userCafeterias.filter(c => c.approval_status === 'approved')
+      const cafeteriaName = approvedCafeterias.length > 0
+        ? approvedCafeterias.map(c => c.name).join(', ')
+        : (userCafeterias.length > 0 ? `${userCafeterias[0].name} (Pending)` : null)
+
+      return {
+        id: profile.id,
+        email: 'No email (orphaned profile)',
+        email_confirmed_at: null,
+        created_at: null,
+        last_sign_in_at: null,
+        // Profile data
+        full_name: profile.full_name || null,
+        role: profile.role || 'student',
+        phone: profile.phone || null,
+        theme: profile.theme || 'light',
+        notification_enabled: profile.notification_enabled || false,
+        is_active: profile.is_active !== false,
+        is_suspended: profile.is_suspended || false,
+        avatar_url: profile.avatar_url || null,
+        profile_created_at: profile.created_at || null,
+        status: profile.is_active !== false ? 'active' : 'inactive',
+        // Cafeteria data
+        cafeteria_name: cafeteriaName,
+        cafeterias_count: userCafeterias.length,
+        approved_cafeterias_count: approvedCafeterias.length
+      }
+    })
 
     const allUsers = [...combinedUsers, ...orphanedProfiles]
 

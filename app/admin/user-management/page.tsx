@@ -95,13 +95,25 @@ export default function UserManagement() {
       // Format users for the UI with better name handling
       const formattedUsers = data.users?.map((user: any) => {
         // Better name extraction logic
-        let displayName = 'Unknown User'
+        let displayName = 'No Name'
         if (user.full_name && user.full_name.trim()) {
           displayName = user.full_name.trim()
-        } else if (user.email) {
+        } else if (user.email && user.email !== 'No email (orphaned profile)') {
           // Extract name from email (before @)
           const emailName = user.email.split('@')[0]
           displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1).replace(/[._]/g, ' ')
+        }
+
+        // Handle cafeteria display
+        let cafeteriaDisplay = '-'
+        if (user.role === 'cafeteria_manager' || user.role === 'Cafeteria Owner') {
+          if (user.cafeteria_name) {
+            cafeteriaDisplay = user.cafeteria_name
+          } else if (user.cafeterias_count > 0) {
+            cafeteriaDisplay = `${user.cafeterias_count} cafeteria(s) (Pending)`
+          } else {
+            cafeteriaDisplay = 'No cafeteria'
+          }
         }
 
         return {
@@ -111,8 +123,9 @@ export default function UserManagement() {
           role: user.role === 'cafeteria_manager' ? 'Cafeteria Owner' :
                 user.role === 'admin' ? 'Admin' :
                 user.role === 'student' ? 'Student' : user.role || 'No role',
-          status: user.email_confirmed_at ? 'Active' : 'Pending',
-          cafeteria: '-', // We'll need to add cafeteria lookup later
+          status: user.is_suspended ? 'Suspended' :
+                  user.email_confirmed_at ? 'Active' : 'Pending',
+          cafeteria: cafeteriaDisplay,
           lastActive: user.last_sign_in_at ?
             new Date(user.last_sign_in_at).toLocaleDateString() :
             user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Never',
@@ -124,6 +137,10 @@ export default function UserManagement() {
           notification_enabled: user.notification_enabled,
           email_confirmed_at: user.email_confirmed_at,
           last_sign_in_at: user.last_sign_in_at,
+          // Cafeteria data
+          cafeteria_name: user.cafeteria_name,
+          cafeterias_count: user.cafeterias_count,
+          approved_cafeterias_count: user.approved_cafeterias_count
         }
       }) || []
 

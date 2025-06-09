@@ -102,8 +102,8 @@ export default function RegisterPage() {
 
       setIsSubmitting(false)
       toast({
-        title: "Application submitted successfully!",
-        description: "Your cafeteria application has been submitted for review. You will be notified once it's processed.",
+        title: "Registration successful!",
+        description: "Your account has been created and your cafeteria application submitted for review. You can login once an admin approves your application.",
       })
 
       // Redirect to login page

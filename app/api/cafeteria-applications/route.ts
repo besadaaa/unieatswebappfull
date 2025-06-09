@@ -26,8 +26,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create user account immediately but keep it inactive until approval
+    const supabaseAdmin = createSupabaseAdmin()
+
     // Check if an application already exists for this email and cafeteria name
-    const { data: existingApplication, error: checkError } = await supabase
+    const { data: existingApplication, error: checkError } = await supabaseAdmin
       .from('cafeteria_applications')
       .select('id, status, business_name')
       .eq('contact_email', email)
@@ -52,8 +55,113 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user already exists
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
+      filter: `email.eq.${email}`
+    })
+
+    let authUserId: string
+
+    if (existingUsers.users && existingUsers.users.length > 0) {
+      // User already exists
+      authUserId = existingUsers.users[0].id
+      console.log('Using existing auth user:', authUserId, 'for email:', email)
+
+      // Check if profile exists for this user
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', authUserId)
+        .single()
+
+      if (!existingProfile) {
+        console.log('Creating missing profile for existing user:', authUserId)
+        // Create profile for existing user
+        const { error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: authUserId,
+            full_name: `${ownerFirstName} ${ownerLastName}`,
+            role: 'cafeteria_manager',
+            phone: phone,
+            is_active: false, // Inactive until approval
+            is_suspended: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (profileError) {
+          console.error('Error creating profile for existing user:', profileError)
+          return NextResponse.json(
+            { error: 'Failed to create user profile', details: profileError.message },
+            { status: 500 }
+          )
+        }
+
+        console.log('Created profile for existing user:', authUserId)
+      } else {
+        console.log('Profile already exists for user:', authUserId)
+      }
+    } else {
+      // Create new user account
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          full_name: `${ownerFirstName} ${ownerLastName}`,
+          role: 'cafeteria_manager'
+        }
+      })
+
+      if (authError) {
+        console.error('Error creating auth user:', authError)
+        return NextResponse.json(
+          { error: 'Failed to create user account', details: authError.message },
+          { status: 500 }
+        )
+      }
+
+      if (!authUser || !authUser.user) {
+        console.error('No user data returned from auth creation')
+        return NextResponse.json(
+          { error: 'Failed to create user account - no user data returned' },
+          { status: 500 }
+        )
+      }
+
+      authUserId = authUser.user.id
+      console.log('Created new auth user:', authUserId, 'for email:', email)
+
+      // Create profile for the user (inactive until approval)
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: authUserId,
+          full_name: `${ownerFirstName} ${ownerLastName}`,
+          role: 'cafeteria_manager',
+          phone: phone,
+          is_active: false, // Inactive until approval
+          is_suspended: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError)
+        // Rollback: delete the auth user
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+        return NextResponse.json(
+          { error: 'Failed to create user profile', details: profileError.message },
+          { status: 500 }
+        )
+      }
+
+      console.log('Created profile for user:', authUserId, 'with email:', email)
+    }
+
     // Insert into cafeteria_applications table
-    const { data: application, error: applicationError } = await supabase
+    const { data: application, error: applicationError } = await supabaseAdmin
       .from('cafeteria_applications')
       .insert({
         business_name: cafeteriaName,
@@ -62,6 +170,7 @@ export async function POST(request: NextRequest) {
         contact_phone: phone,
         contact_email: email,
         owner_name: `${ownerFirstName} ${ownerLastName}`,
+        // owner_id: authUserId, // Link to the created user - column may not exist
         website: '', // Can be added later if needed
         status: 'pending',
         submitted_at: new Date().toISOString(),
@@ -74,7 +183,7 @@ export async function POST(request: NextRequest) {
     if (applicationError) {
       console.error('Error creating cafeteria application:', applicationError)
       return NextResponse.json(
-        { error: 'Failed to submit application' },
+        { error: 'Failed to submit application', details: applicationError.message },
         { status: 500 }
       )
     }
@@ -212,15 +321,16 @@ export async function PATCH(request: NextRequest) {
           console.log('Created new auth user:', authUserId)
         }
 
-        // 2. Create or update profile in profiles table
+        // 2. Create or update profile in profiles table (email is NOT stored here)
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .upsert({
             id: authUserId,
-            email: application.contact_email,
             full_name: application.owner_name,
             phone: application.contact_phone,
             role: 'cafeteria_manager',
+            is_active: true, // Activate when approved
+            is_suspended: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })

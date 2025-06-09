@@ -28,10 +28,10 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
             {dateRange?.from ? (
               dateRange.to ? (
                 <>
-                  {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                  {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
                 </>
               ) : (
-                format(dateRange.from, "LLL dd, y")
+                format(dateRange.from, "MMM dd, yyyy")
               )
             ) : (
               <span>Pick a date range</span>
