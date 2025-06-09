@@ -30,24 +30,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const initializeTheme = async () => {
       try {
-        // Get current user
+        // Get current user (this now handles auth session errors gracefully)
         const user = await getCurrentUser()
 
         if (user) {
           // User is logged in, try to get their preference from Supabase
-          const userPreference = await getUserThemePreference(user.id)
+          try {
+            const userPreference = await getUserThemePreference(user.id)
 
-          if (userPreference) {
-            setTheme(userPreference.theme)
-            applyTheme(userPreference.theme)
-          } else {
-            // No user preference found, get default from system settings
-            const defaultTheme = await getSystemSetting('default_theme') || 'light'
-            setTheme(defaultTheme)
-            applyTheme(defaultTheme)
+            if (userPreference) {
+              setTheme(userPreference.theme)
+              applyTheme(userPreference.theme)
+            } else {
+              // No user preference found, get default from system settings
+              try {
+                const defaultTheme = await getSystemSetting('default_theme') || 'dark'
+                setTheme(defaultTheme)
+                applyTheme(defaultTheme)
 
-            // Save the default theme as user's preference
-            await saveUserThemePreference(user.id, defaultTheme)
+                // Save the default theme as user's preference
+                await saveUserThemePreference(user.id, defaultTheme)
+              } catch (settingsError) {
+                console.log('System settings not available, using dark theme')
+                setTheme('dark')
+                applyTheme('dark')
+              }
+            }
+          } catch (prefError) {
+            console.log('Theme preferences not available, using dark theme')
+            setTheme('dark')
+            applyTheme('dark')
           }
         } else {
           // User not logged in, check localStorage or system preference
@@ -59,7 +71,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Check system preference
             const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-            const defaultTheme = await getSystemSetting('default_theme') || (systemPrefersDark ? 'dark' : 'light')
+            let defaultTheme = systemPrefersDark ? 'dark' : 'light'
+
+            // Try to get system default, but don't fail if it's not available
+            try {
+              const systemDefault = await getSystemSetting('default_theme')
+              if (systemDefault) {
+                defaultTheme = systemDefault
+              }
+            } catch (error) {
+              console.log('System settings not available, using browser preference')
+            }
 
             setTheme(defaultTheme)
             applyTheme(defaultTheme)
@@ -67,10 +89,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Error initializing theme:', error)
+        console.log('Error initializing theme (using fallback):', error)
         // Fallback to localStorage or default
         const savedTheme = localStorage.getItem("unieats-theme") as "dark" | "light" | null
-        const fallbackTheme = savedTheme || "light"
+        const fallbackTheme = savedTheme || "dark"
         setTheme(fallbackTheme)
         applyTheme(fallbackTheme)
       } finally {
@@ -106,13 +128,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("unieats-theme", newTheme)
       }
 
-      // Save to Supabase if user is logged in
-      const user = await getCurrentUser()
-      if (user) {
-        await saveUserThemePreference(user.id, newTheme)
+      // Save to Supabase if user is logged in (with error handling)
+      try {
+        const user = await getCurrentUser()
+        if (user) {
+          await saveUserThemePreference(user.id, newTheme)
+        }
+      } catch (authError) {
+        console.log('Could not save theme to user preferences (user not logged in)')
       }
     } catch (error) {
-      console.error('Error saving theme preference:', error)
+      console.log('Error saving theme preference (using fallback):', error)
       // Still apply the theme locally even if saving fails
       setTheme(newTheme)
       applyTheme(newTheme)

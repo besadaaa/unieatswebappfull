@@ -239,13 +239,37 @@ export const testSupabaseConnection = async () => {
 // Auth helper functions
 export const getCurrentUser = async () => {
   try {
+    // First check if there's a session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.log('Session error (non-critical):', sessionError.message)
+      return null
+    }
+
+    if (!session) {
+      // No session exists, user is not logged in
+      return null
+    }
+
+    // Session exists, now get user details
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error) {
+      // Handle AuthSessionMissingError specifically
+      if (error.message?.includes('Auth session missing')) {
+        console.log('Auth session missing - user not logged in')
+        return null
+      }
       console.error('Error getting current user:', error)
       return null
     }
     return user
-  } catch (error) {
+  } catch (error: any) {
+    // Handle AuthSessionMissingError specifically
+    if (error.message?.includes('Auth session missing')) {
+      console.log('Auth session missing - user not logged in')
+      return null
+    }
     console.error('Error getting current user:', error)
     return null
   }
