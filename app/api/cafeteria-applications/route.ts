@@ -56,15 +56,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
-      filter: `email.eq.${email}`
-    })
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const matchingUser = existingUsers.users.find(user => user.email === email)
 
     let authUserId: string
 
-    if (existingUsers.users && existingUsers.users.length > 0) {
+    if (matchingUser) {
       // User already exists
-      authUserId = existingUsers.users[0].id
+      authUserId = matchingUser.id
       console.log('Using existing auth user:', authUserId, 'for email:', email)
 
       // Check if profile exists for this user
@@ -84,8 +83,9 @@ export async function POST(request: NextRequest) {
             full_name: `${ownerFirstName} ${ownerLastName}`,
             role: 'cafeteria_manager',
             phone: phone,
-            is_active: false, // Inactive until approval
+            is_active: false, // Inactive until approval - CANNOT LOGIN
             is_suspended: false,
+            status: 'inactive', // Inactive until approval
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -141,8 +141,9 @@ export async function POST(request: NextRequest) {
           full_name: `${ownerFirstName} ${ownerLastName}`,
           role: 'cafeteria_manager',
           phone: phone,
-          is_active: false, // Inactive until approval
+          is_active: false, // Inactive until approval - CANNOT LOGIN
           is_suspended: false,
+          status: 'inactive', // Inactive until approval
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -286,13 +287,12 @@ export async function PATCH(request: NextRequest) {
         let authUserId: string
 
         // Check if user already exists
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
-          filter: `email.eq.${application.contact_email}`
-        })
+        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+        const matchingUser = existingUsers.users.find(user => user.email === application.contact_email)
 
-        if (existingUsers.users && existingUsers.users.length > 0) {
+        if (matchingUser) {
           // User already exists, use existing user ID
-          authUserId = existingUsers.users[0].id
+          authUserId = matchingUser.id
           console.log('Using existing auth user:', authUserId)
 
           // Update password for existing user

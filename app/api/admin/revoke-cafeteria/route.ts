@@ -61,13 +61,35 @@ export async function POST(request: NextRequest) {
     const revokedCafeterias = []
     const errors = []
 
-    // Revoke approval for all approved cafeterias
+    // Step 1: Suspend user profile (DISABLE LOGIN)
+    const { error: suspendError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_active: false, // DISABLE LOGIN
+        is_suspended: true, // Mark as suspended
+        status: 'suspended',
+        suspension_reason: reason,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+
+    if (suspendError) {
+      console.error('Error suspending user:', suspendError)
+      return NextResponse.json(
+        { error: 'Failed to suspend user' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ User suspended - cannot login')
+
+    // Step 2: Revoke approval for all approved cafeterias
     for (const cafeteria of ownedCafeterias) {
       if (cafeteria.approval_status === 'approved') {
         const { error: revokeError } = await supabaseAdmin
           .from('cafeterias')
           .update({
-            approval_status: 'revoked',
+            approval_status: 'rejected', // Use 'rejected' instead of 'revoked'
             is_active: false,
             is_open: false,
             revoked_at: new Date().toISOString(),
@@ -116,8 +138,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully revoked approval for ${revokedCafeterias.length} cafeteria(s)`,
-      revokedCafeterias: revokedCafeterias.map(c => ({ id: c.id, name: c.name }))
+      message: `Successfully revoked access for ${userProfile.full_name}. User cannot login and ${revokedCafeterias.length} cafeteria(s) deactivated.`,
+      revokedCafeterias: revokedCafeterias.map(c => ({ id: c.id, name: c.name })),
+      userSuspended: true,
+      canLogin: false
     })
 
   } catch (error) {
@@ -170,7 +194,7 @@ export async function PATCH(request: NextRequest) {
       .from('cafeterias')
       .select('id, name, approval_status')
       .eq('owner_id', userId)
-      .eq('approval_status', 'revoked')
+      .eq('approval_status', 'rejected') // Look for 'rejected' status
 
     if (cafeteriaError) {
       console.error('Error fetching revoked cafeterias:', cafeteriaError)
@@ -190,7 +214,29 @@ export async function PATCH(request: NextRequest) {
     const restoredCafeterias = []
     const errors = []
 
-    // Restore approval for all revoked cafeterias
+    // Step 1: Restore user profile (ENABLE LOGIN)
+    const { error: restoreError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_active: true, // ENABLE LOGIN
+        is_suspended: false, // Remove suspension
+        status: 'active',
+        suspension_reason: null, // Clear suspension reason
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+
+    if (restoreError) {
+      console.error('Error restoring user:', restoreError)
+      return NextResponse.json(
+        { error: 'Failed to restore user' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ User restored - can login again')
+
+    // Step 2: Restore approval for all revoked cafeterias
     for (const cafeteria of revokedCafeterias) {
       const { error: restoreError } = await supabaseAdmin
         .from('cafeterias')
@@ -243,8 +289,10 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully restored approval for ${restoredCafeterias.length} cafeteria(s)`,
-      restoredCafeterias: restoredCafeterias.map(c => ({ id: c.id, name: c.name }))
+      message: `Successfully restored access for ${userProfile.full_name}. User can login and ${restoredCafeterias.length} cafeteria(s) reactivated.`,
+      restoredCafeterias: restoredCafeterias.map(c => ({ id: c.id, name: c.name })),
+      userRestored: true,
+      canLogin: true
     })
 
   } catch (error) {

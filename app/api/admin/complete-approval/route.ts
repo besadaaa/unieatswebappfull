@@ -53,146 +53,116 @@ export async function POST(request: NextRequest) {
 
     console.log('Application status updated to approved')
 
-    // Step 3: Check if user account exists (but don't create one yet)
+    // Step 3: Find the user account that should exist from registration
     const email = application.contact_email || application.email
-    console.log('Checking for existing user with email:', email)
+    console.log('Looking for registered user with email:', email)
 
     // Search for user by email in auth.users
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
     let matchingUser = existingUsers.users.find(user => user.email === email)
 
-    let userId: string | null = null
-
-    if (matchingUser) {
-      userId = matchingUser.id
-      console.log('Found existing user:', userId, 'with email:', matchingUser.email)
-    } else {
-      console.log('No existing user found. User will need to create account when they sign in.')
+    if (!matchingUser) {
+      console.error('No user account found for email:', email)
+      return NextResponse.json(
+        { error: `No user account found for email: ${email}. The user must register first before approval.` },
+        { status: 400 }
+      )
     }
 
-    // Step 4: Update user profile if user exists
-    if (userId) {
-      // First check if profile exists
-      const { data: existingProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .single()
+    const userId = matchingUser.id
+    console.log('Found registered user:', userId, 'with email:', matchingUser.email)
 
-      if (existingProfile) {
-        // Update existing profile
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            is_active: true, // Activate the account
-            role: 'cafeteria_manager', // Ensure correct role
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userId)
+    // Step 4: Activate the user profile (enable login)
+    console.log('Activating user profile for:', userId)
 
-        if (profileError) {
-          console.error('Error updating user profile:', profileError)
-          return NextResponse.json(
-            { error: 'Failed to update user account' },
-            { status: 500 }
-          )
-        }
-        console.log('User profile updated for user:', userId)
-      } else {
-        // Create new profile for existing auth user
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .insert({
-            id: userId,
-            full_name: application.owner_name || `${application.owner_first_name || ''} ${application.owner_last_name || ''}`.trim() || 'Cafeteria Owner',
-            role: 'cafeteria_manager',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_active: true, // ENABLE LOGIN
+        is_suspended: false, // Ensure not suspended
+        status: 'active', // Update status
+        role: 'cafeteria_manager', // Ensure correct role
+        full_name: application.owner_name || `${application.owner_first_name || ''} ${application.owner_last_name || ''}`.trim() || 'Cafeteria Owner',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
 
-        if (profileError) {
-          console.error('Error creating user profile:', profileError)
-          return NextResponse.json(
-            { error: 'Failed to create user profile' },
-            { status: 500 }
-          )
-        }
-        console.log('User profile created for user:', userId)
-      }
-    } else {
-      console.log('No user account exists yet. Profile will be created when user registers.')
+    if (profileError) {
+      console.error('Error activating user profile:', profileError)
+      return NextResponse.json(
+        { error: 'Failed to activate user account' },
+        { status: 500 }
+      )
     }
 
-    // Step 5: Handle cafeteria creation/update
-    let cafeteriaId: string | null = null
+    console.log('✅ User profile activated - user can now login with original password')
 
-    if (userId) {
-      // User exists, check if they already have a cafeteria
-      console.log('Looking for existing cafeteria for user:', userId)
+    // Step 5: Create or update cafeteria
+    console.log('Creating/updating cafeteria for user:', userId)
 
-      const { data: existingCafeteria, error: findError } = await supabaseAdmin
+    // Check if user already has a cafeteria
+    const { data: existingCafeteria, error: findError } = await supabaseAdmin
+      .from('cafeterias')
+      .select('*')
+      .eq('owner_id', userId)
+      .single()
+
+    let cafeteriaId: string
+
+    if (existingCafeteria && !findError) {
+      // Update existing cafeteria
+      cafeteriaId = existingCafeteria.id
+      console.log('Updating existing cafeteria:', cafeteriaId)
+
+      const { error: updateError } = await supabaseAdmin
         .from('cafeterias')
-        .select('*')
-        .eq('owner_id', userId)
-        .single()
+        .update({
+          name: application.business_name || application.cafeteria_name || existingCafeteria.name,
+          location: application.location || application.cafeteria_location || existingCafeteria.location,
+          description: application.description || application.cafeteria_description || existingCafeteria.description,
+          approval_status: 'approved',
+          is_active: true, // Activate cafeteria
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cafeteriaId)
 
-      if (existingCafeteria && !findError) {
-        // Update existing cafeteria
-        cafeteriaId = existingCafeteria.id
-        console.log('Found existing cafeteria, updating:', cafeteriaId)
-
-        const { error: updateError } = await supabaseAdmin
-          .from('cafeterias')
-          .update({
-            name: application.business_name || application.cafeteria_name || existingCafeteria.name,
-            location: application.location || application.cafeteria_location || existingCafeteria.location,
-            description: application.description || application.cafeteria_description || existingCafeteria.description,
-            approval_status: 'approved',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', cafeteriaId)
-
-        if (updateError) {
-          console.error('Error updating existing cafeteria:', updateError)
-          return NextResponse.json(
-            { error: 'Failed to update cafeteria' },
-            { status: 500 }
-          )
-        }
-
-        console.log('Cafeteria updated successfully:', cafeteriaId)
-      } else {
-        // Create new cafeteria for existing user
-        cafeteriaId = crypto.randomUUID()
-        console.log('Creating new cafeteria for existing user:', cafeteriaId)
-
-        const { error: createError } = await supabaseAdmin
-          .from('cafeterias')
-          .insert({
-            id: cafeteriaId,
-            name: application.business_name || application.cafeteria_name || 'New Cafeteria',
-            location: application.location || application.cafeteria_location || 'Location TBD',
-            description: application.description || application.cafeteria_description || 'No description provided',
-            owner_id: userId,
-            approval_status: 'approved',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-
-        if (createError) {
-          console.error('Error creating cafeteria:', createError)
-          return NextResponse.json(
-            { error: 'Failed to create cafeteria' },
-            { status: 500 }
-          )
-        }
-
-        console.log('Cafeteria created successfully:', cafeteriaId)
+      if (updateError) {
+        console.error('Error updating cafeteria:', updateError)
+        return NextResponse.json(
+          { error: 'Failed to update cafeteria' },
+          { status: 500 }
+        )
       }
+
+      console.log('✅ Cafeteria updated and activated:', cafeteriaId)
     } else {
-      console.log('No user account exists yet. Cafeteria will be created when user registers.')
-      // We'll store the approval in the application itself, and create the cafeteria later
+      // Create new cafeteria
+      cafeteriaId = crypto.randomUUID()
+      console.log('Creating new cafeteria:', cafeteriaId)
+
+      const { error: createError } = await supabaseAdmin
+        .from('cafeterias')
+        .insert({
+          id: cafeteriaId,
+          name: application.business_name || application.cafeteria_name || 'New Cafeteria',
+          location: application.location || application.cafeteria_location || 'Location TBD',
+          description: application.description || application.cafeteria_description || 'No description provided',
+          owner_id: userId,
+          approval_status: 'approved',
+          is_active: true, // Activate cafeteria
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+
+      if (createError) {
+        console.error('Error creating cafeteria:', createError)
+        return NextResponse.json(
+          { error: 'Failed to create cafeteria' },
+          { status: 500 }
+        )
+      }
+
+      console.log('✅ Cafeteria created and activated:', cafeteriaId)
     }
 
     // Step 6: Log the approval for audit trail
@@ -215,40 +185,19 @@ export async function POST(request: NextRequest) {
       console.warn('Audit log warning:', auditError)
     }
 
-    // Step 7: Send password reset email to user (if user exists)
-    if (userId) {
-      try {
-        const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: email,
-        })
-
-        if (error) {
-          console.warn('Could not send password reset email:', error)
-        } else {
-          console.log('Password reset email sent to:', email)
-        }
-      } catch (resetError) {
-        console.warn('Error sending password reset email:', resetError)
-      }
-    }
-
-    console.log('Complete approval process finished successfully')
+    console.log('✅ Complete approval process finished successfully')
 
     return NextResponse.json({
       success: true,
-      message: userId
-        ? 'Cafeteria application approved successfully. A password reset email has been sent to the user.'
-        : 'Cafeteria application approved. User can now create their account using the registered email.',
+      message: 'Cafeteria application approved successfully. User can now login with their original registration credentials.',
       data: {
         applicationId,
         userId,
         cafeteriaId,
         email,
         cafeteriaName: application.business_name || application.cafeteria_name,
-        userExists: !!userId,
-        requiresRegistration: !userId,
-        passwordResetSent: !!userId
+        userActivated: true,
+        canLogin: true
       }
     })
 
