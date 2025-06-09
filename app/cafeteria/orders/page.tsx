@@ -137,6 +137,8 @@ export default function OrdersPage() {
 
   // Optimized order loading
   useEffect(() => {
+    let subscription: any = null
+
     const initializeOrders = async () => {
       try {
         setLoading(true)
@@ -171,7 +173,7 @@ export default function OrdersPage() {
         await loadOrdersOptimized(userCafeteria.id)
 
         // Set up real-time subscription
-        const subscription = OptimizedOrdersService.subscribeToOrderUpdates(
+        subscription = OptimizedOrdersService.subscribeToOrderUpdates(
           userCafeteria.id,
           () => {
             console.log('Real-time update received, reloading orders...')
@@ -179,9 +181,6 @@ export default function OrdersPage() {
           }
         )
 
-        return () => {
-          subscription.unsubscribe()
-        }
       } catch (error) {
         console.error('Error initializing orders:', error)
         toast({
@@ -194,6 +193,14 @@ export default function OrdersPage() {
     }
 
     initializeOrders()
+
+    // Cleanup function
+    return () => {
+      if (subscription) {
+        console.log('Cleaning up order subscription...')
+        subscription.unsubscribe()
+      }
+    }
   }, [])
 
   // Load orders using optimized service
