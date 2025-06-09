@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         subtotal,
         total_amount,
         admin_revenue,
+        cafeteria_revenue,
         user_id,
         status,
         created_at,
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
     // Get today's orders specifically
     const { data: todayOrders, error: todayOrdersError } = await supabaseAdmin
       .from('orders')
-      .select('id, subtotal, total_amount, admin_revenue, user_id, status')
+      .select('id, subtotal, total_amount, admin_revenue, cafeteria_revenue, user_id, status')
       .eq('cafeteria_id', cafeteriaId)
       .gte('created_at', todayStr + 'T00:00:00')
       .lte('created_at', todayStr + 'T23:59:59')
@@ -114,11 +115,9 @@ export async function GET(request: NextRequest) {
     // Time range metrics (main metrics based on selected time range)
     const totalOrders = allOrders.length
     const totalRevenue = allOrders.reduce((sum, order) => {
-      // Correct calculation based on actual database structure:
-      // subtotal = original cafeteria price
-      // cafeteria gets = subtotal - 10% commission = subtotal * 0.9
-      const subtotal = parseFloat(order.subtotal) || parseFloat(order.total_amount) || 0
-      const cafeteriaRevenue = subtotal * 0.9
+      // Use the actual cafeteria_revenue field from database
+      // This field already contains the correct amount the cafeteria receives
+      const cafeteriaRevenue = parseFloat(order.cafeteria_revenue) || 0
       return sum + cafeteriaRevenue
     }, 0)
     const totalCustomers = new Set(allOrders.map(order => order.user_id)).size
@@ -127,13 +126,11 @@ export async function GET(request: NextRequest) {
     // Today's metrics (separate for "today" specific data)
     const todayOrdersCount = todayOrdersList.length
     const todayRevenue = todayOrdersList.reduce((sum, order) => {
-      // Correct calculation based on actual database structure:
-      // subtotal = original cafeteria price
-      // cafeteria gets = subtotal - 10% commission = subtotal * 0.9
-      const subtotal = parseFloat(order.subtotal) || parseFloat(order.total_amount) || 0
-      const cafeteriaRevenue = subtotal * 0.9
+      // Use the actual cafeteria_revenue field from database
+      // This field already contains the correct amount the cafeteria receives
+      const cafeteriaRevenue = parseFloat(order.cafeteria_revenue) || 0
 
-      console.log(`💰 Order calculation: Subtotal (original price): ${subtotal} EGP, Cafeteria gets (90%): ${cafeteriaRevenue.toFixed(2)} EGP`)
+      console.log(`💰 Order calculation: Cafeteria revenue from DB: ${cafeteriaRevenue.toFixed(2)} EGP`)
 
       return sum + cafeteriaRevenue
     }, 0)
@@ -154,11 +151,11 @@ export async function GET(request: NextRequest) {
           }
           existing.quantity += item.quantity || 0
 
-          // Calculate correct cafeteria revenue for this item
-          // item.price is the original cafeteria price (subtotal)
-          // cafeteria gets 90% of the original price
+          // Calculate cafeteria revenue for this item
+          // item.price is the original cafeteria price (what they set)
+          // We need to calculate what the cafeteria actually gets (90% of original price)
           const itemTotalPrice = (parseFloat(item.price) || 0) * (item.quantity || 0)
-          const cafeteriaItemRevenue = itemTotalPrice * 0.9  // Cafeteria gets 90%
+          const cafeteriaItemRevenue = itemTotalPrice * 0.9  // Cafeteria gets 90% of their original price
           existing.revenue += cafeteriaItemRevenue
 
           itemSales.set(key, existing)

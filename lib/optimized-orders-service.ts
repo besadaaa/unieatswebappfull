@@ -499,17 +499,31 @@ export class OptimizedOrdersService {
     console.log('Cleared all order caches')
   }
 
+  // Track active subscriptions to prevent duplicates
+  private static activeSubscriptions = new Map<string, any>()
+
   // Subscribe to real-time order updates
   static subscribeToOrderUpdates(cafeteriaId: string, callback: (payload: any) => void) {
-    return supabase
-      .channel(`orders_${cafeteriaId}`)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+    const channelName = `orders_${cafeteriaId}`
+
+    // If there's already an active subscription for this cafeteria, unsubscribe first
+    if (this.activeSubscriptions.has(channelName)) {
+      console.log(`Unsubscribing existing channel: ${channelName}`)
+      const existingChannel = this.activeSubscriptions.get(channelName)
+      supabase.removeChannel(existingChannel)
+      this.activeSubscriptions.delete(channelName)
+    }
+
+    console.log(`Creating new subscription for channel: ${channelName}`)
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'orders',
           filter: `cafeteria_id=eq.${cafeteriaId}`
-        }, 
+        },
         (payload) => {
           console.log('Real-time order update:', payload)
           this.clearAllCaches() // Clear caches on real-time updates
@@ -517,5 +531,26 @@ export class OptimizedOrdersService {
         }
       )
       .subscribe()
+
+    // Store the channel reference
+    this.activeSubscriptions.set(channelName, channel)
+
+    return {
+      unsubscribe: () => {
+        console.log(`Unsubscribing from channel: ${channelName}`)
+        supabase.removeChannel(channel)
+        this.activeSubscriptions.delete(channelName)
+      }
+    }
+  }
+
+  // Clean up all subscriptions
+  static unsubscribeAll() {
+    console.log('Unsubscribing from all order channels...')
+    this.activeSubscriptions.forEach((channel, channelName) => {
+      console.log(`Removing channel: ${channelName}`)
+      supabase.removeChannel(channel)
+    })
+    this.activeSubscriptions.clear()
   }
 }
