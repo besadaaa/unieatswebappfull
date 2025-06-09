@@ -187,302 +187,70 @@ function AnalyticsPageContent() {
     }
   }
 
-  // Fetch analytics data from Supabase
+  // Fetch analytics data from API
   const fetchAnalyticsData = async (selectedDateRange?: DateRange) => {
     try {
       const dateFilter = selectedDateRange || dateRange
       const startDate = dateFilter?.from ? dateFilter.from.toISOString().split('T')[0] : null
       const endDate = dateFilter?.to ? dateFilter.to.toISOString().split('T')[0] : null
 
-      // Fetch orders data for the selected date range (exclude cancelled orders)
-      let ordersQuery = supabase
-        .from('orders')
-        .select(`
-          id,
-          user_id,
-          created_at,
-          updated_at,
-          total_amount,
-          admin_revenue,
-          status,
-          rating,
-          order_items(
-            quantity,
-            price,
-            item_id
-          )
-        `)
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: true })
+      console.log('🔍 Fetching analytics data for date range:', { startDate, endDate })
 
-      if (startDate) ordersQuery = ordersQuery.gte('created_at', startDate)
-      if (endDate) ordersQuery = ordersQuery.lte('created_at', endDate + 'T23:59:59')
+      // Call the analytics API
+      const params = new URLSearchParams()
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
 
-      const { data: orders, error: ordersError } = await ordersQuery
+      const response = await fetch(`/api/analytics?${params.toString()}`)
 
-      if (ordersError) throw ordersError
-
-      // Fetch menu items and cafeterias separately to avoid relationship issues
-      const { data: menuItems } = await supabase
-        .from('menu_items')
-        .select('id, name, price, category, cafeteria_id')
-
-      const { data: cafeterias } = await supabase
-        .from('cafeterias')
-        .select('id, name')
-
-      // Create maps for quick lookup
-      const menuItemsMap = menuItems ? Object.fromEntries(
-        menuItems.map(item => [item.id, item])
-      ) : {}
-
-      const cafeteriasMap = cafeterias ? Object.fromEntries(
-        cafeterias.map(caf => [caf.id, caf])
-      ) : {}
-
-      // Process orders data for charts
-      if (orders) {
-        // Generate date-based data
-        const dateMap = new Map<string, { orders: number, revenue: number, users: Set<string> }>()
-
-        orders.forEach(order => {
-          const date = order.created_at.split('T')[0]
-          if (!dateMap.has(date)) {
-            dateMap.set(date, { orders: 0, revenue: 0, users: new Set() })
-          }
-          const dayData = dateMap.get(date)!
-          dayData.orders += 1
-          dayData.revenue += parseFloat(order.admin_revenue) || 0
-          dayData.users.add(order.id) // Using order ID as proxy for user activity
-        })
-
-        // Convert to arrays for charts
-        const sortedDates = Array.from(dateMap.keys()).sort()
-        const newOrderData = sortedDates.map(date => dateMap.get(date)!.orders)
-        const newRevenueData = sortedDates.map(date => dateMap.get(date)!.revenue)
-        const newUserActivityData = sortedDates.map(date => dateMap.get(date)!.users.size)
-        const newLabels = sortedDates.map(date => format(new Date(date), "MMM dd"))
-
-        setOrderData(newOrderData)
-        setRevenueData(newRevenueData)
-        setUserActivityData(newUserActivityData)
-        setLabels(newLabels)
-
-        // Calculate popular menu items with cafeteria names
-        const itemCounts: Record<string, { count: number, cafeteriaName: string }> = {}
-        orders.forEach(order => {
-          order.order_items?.forEach((item: any) => {
-            if (item.item_id && menuItemsMap[item.item_id]) {
-              const menuItem = menuItemsMap[item.item_id]
-              const cafeteria = cafeteriasMap[menuItem.cafeteria_id]
-              const itemKey = `${menuItem.name} (${cafeteria?.name || 'Unknown Cafeteria'})`
-
-              if (!itemCounts[itemKey]) {
-                itemCounts[itemKey] = { count: 0, cafeteriaName: cafeteria?.name || 'Unknown' }
-              }
-              itemCounts[itemKey].count += item.quantity
-            }
-          })
-        })
-
-        const sortedItems = Object.entries(itemCounts)
-          .sort(([,a], [,b]) => b.count - a.count)
-          .slice(0, 5)
-
-        setPopularItemsLabels(sortedItems.map(([name]) => name))
-        setPopularItemsData(sortedItems.map(([,data]) => data.count))
-
-        // Calculate peak hours
-        const hourCounts = new Array(8).fill(0) // 8 time slots: 8AM-10AM, 10AM-12PM, 12PM-2PM, 2PM-4PM, 4PM-6PM, 6PM-8PM, 8PM-10PM, 10PM-12AM
-
-        orders.forEach(order => {
-          const orderDate = new Date(order.created_at)
-          const hour = orderDate.getHours()
-
-          // Map hours to slots: 8-9=0, 10-11=1, 12-13=2, 14-15=3, 16-17=4, 18-19=5, 20-21=6, 22-23=7
-          let slotIndex = -1
-          if (hour >= 8 && hour < 10) slotIndex = 0      // 8AM-10AM
-          else if (hour >= 10 && hour < 12) slotIndex = 1 // 10AM-12PM
-          else if (hour >= 12 && hour < 14) slotIndex = 2 // 12PM-2PM
-          else if (hour >= 14 && hour < 16) slotIndex = 3 // 2PM-4PM
-          else if (hour >= 16 && hour < 18) slotIndex = 4 // 4PM-6PM
-          else if (hour >= 18 && hour < 20) slotIndex = 5 // 6PM-8PM
-          else if (hour >= 20 && hour < 22) slotIndex = 6 // 8PM-10PM
-          else if (hour >= 22 || hour < 2) slotIndex = 7  // 10PM-12AM (including late night)
-
-          if (slotIndex >= 0 && slotIndex < 8) {
-            hourCounts[slotIndex]++
-          }
-        })
-
-        setPeakHoursData(hourCounts)
-
-        // Calculate customer satisfaction from ratings
-        const ratings = orders.filter(order => order.rating).map(order => order.rating)
-        if (ratings.length > 0) {
-          const satisfied = ratings.filter(r => r >= 4).length
-          const neutral = ratings.filter(r => r === 3).length
-          const unsatisfied = ratings.filter(r => r <= 2).length
-          const total = ratings.length
-
-          setCustomerSatisfactionData([
-            Math.round((satisfied / total) * 100),
-            Math.round((neutral / total) * 100),
-            Math.round((unsatisfied / total) * 100)
-          ])
-        } else {
-          setCustomerSatisfactionData([0, 0, 0])
-        }
-
-        // Calculate Average Order Value by day (using total order amount customers pay)
-        const avgOrderValueByDay = sortedDates.map(date => {
-          const dayOrders = orders.filter(order => order.created_at.split('T')[0] === date)
-          if (dayOrders.length === 0) return 0
-          const totalValue = dayOrders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0)
-          return Math.round(totalValue / dayOrders.length)
-        })
-        setAverageOrderValueData(avgOrderValueByDay)
-        setAverageOrderValueLabels(sortedDates.map(date => format(new Date(date), "MMM dd")))
-
-        // Calculate Order Fulfillment Time (difference between created_at and updated_at for completed orders)
-        const completedOrders = orders.filter(order => order.status === 'completed' && order.updated_at)
-        if (completedOrders.length > 0) {
-          const fulfillmentTimes = completedOrders.map(order => {
-            const created = new Date(order.created_at).getTime()
-            const updated = new Date(order.updated_at).getTime()
-            return (updated - created) / (1000 * 60) // Convert to minutes
-          })
-          const avgFulfillmentTime = fulfillmentTimes.reduce((sum, time) => sum + time, 0) / fulfillmentTimes.length
-          setOrderFulfillmentTime(Math.round(avgFulfillmentTime))
-        } else {
-          setOrderFulfillmentTime(0)
-        }
-
-        // Calculate Order Completion Rate
-        const totalOrders = orders.length
-        const completedOrdersCount = orders.filter(order => order.status === 'completed').length
-        const completionRate = totalOrders > 0 ? (completedOrdersCount / totalOrders) * 100 : 0
-        setOrderCompletionRate(Math.round(completionRate * 10) / 10) // Round to 1 decimal
-
-        // Calculate New vs Returning Customers (improved logic)
-        const uniqueUsersInPeriod = [...new Set(orders.map(order => order.user_id).filter(Boolean))]
-
-        // For each user in the period, check if they are new or returning
-        let newCustomersCount = 0
-        let returningCustomersCount = 0
-
-        for (const userId of uniqueUsersInPeriod) {
-          // Count orders for this user in the current period
-          const userOrdersInPeriod = orders.filter(order => order.user_id === userId).length
-
-          // Check if user had any orders before the start of our date range
-          const { data: previousOrders } = await supabase
-            .from('orders')
-            .select('id')
-            .eq('user_id', userId)
-            .neq('status', 'cancelled')
-            .lt('created_at', startDate)
-            .limit(1)
-
-          // User is returning if they have multiple orders in period OR had previous orders
-          if ((previousOrders && previousOrders.length > 0) || userOrdersInPeriod > 1) {
-            returningCustomersCount++
-          } else {
-            newCustomersCount++
-          }
-        }
-
-        setNewCustomersCount(newCustomersCount)
-        const totalCustomers = newCustomersCount + returningCustomersCount
-        setReturningCustomersRate(totalCustomers > 0 ? Math.round((returningCustomersCount / totalCustomers) * 100) : 0)
-
-        // Calculate Top Selling Items (by revenue) with cafeteria names
-        const itemRevenue: Record<string, number> = {}
-        orders.forEach(order => {
-          order.order_items?.forEach((item: any) => {
-            if (item.item_id && menuItemsMap[item.item_id]) {
-              const menuItem = menuItemsMap[item.item_id]
-              const cafeteria = cafeteriasMap[menuItem.cafeteria_id]
-              const itemKey = `${menuItem.name} (${cafeteria?.name || 'Unknown Cafeteria'})`
-              const revenue = (item.price || menuItem.price || 0) * item.quantity
-              itemRevenue[itemKey] = (itemRevenue[itemKey] || 0) + revenue
-            }
-          })
-        })
-
-        const sortedItemsByRevenue = Object.entries(itemRevenue)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-
-        setTopSellingItemsLabels(sortedItemsByRevenue.map(([name]) => name))
-        setTopSellingItemsData(sortedItemsByRevenue.map(([,revenue]) => Math.round(revenue)))
-
-        // Calculate Item Ratings (average rating per item) with cafeteria names
-        const itemRatings: Record<string, { total: number, count: number }> = {}
-        orders.forEach(order => {
-          if (order.rating && order.order_items) {
-            order.order_items.forEach((item: any) => {
-              if (item.item_id && menuItemsMap[item.item_id]) {
-                const menuItem = menuItemsMap[item.item_id]
-                const cafeteria = cafeteriasMap[menuItem.cafeteria_id]
-                const itemKey = `${menuItem.name} (${cafeteria?.name || 'Unknown Cafeteria'})`
-                if (!itemRatings[itemKey]) {
-                  itemRatings[itemKey] = { total: 0, count: 0 }
-                }
-                itemRatings[itemKey].total += order.rating
-                itemRatings[itemKey].count += 1
-              }
-            })
-          }
-        })
-
-        const sortedItemsByRating = Object.entries(itemRatings)
-          .map(([name, data]) => [name, data.total / data.count] as [string, number])
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-
-        setItemRatingsLabels(sortedItemsByRating.map(([name]) => name))
-        setItemRatingsData(sortedItemsByRating.map(([,rating]) => Math.round(rating * 10) / 10))
-
-        // Calculate Category Performance
-        const categoryOrders: Record<string, number> = {}
-        orders.forEach(order => {
-          order.order_items?.forEach((item: any) => {
-            if (item.item_id && menuItemsMap[item.item_id]) {
-              const category = menuItemsMap[item.item_id].category
-              if (category) {
-                categoryOrders[category] = (categoryOrders[category] || 0) + item.quantity
-              }
-            }
-          })
-        })
-
-        const sortedCategories = Object.entries(categoryOrders)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 4)
-
-        setCategoryPerformanceLabels(sortedCategories.map(([name]) => name))
-        setCategoryPerformanceData(sortedCategories.map(([,count]) => count))
-
-        // Calculate Menu Efficiency (average time between order creation and completion)
-        const preparedOrders = orders.filter(order =>
-          (order.status === 'completed' || order.status === 'ready') && order.updated_at
-        )
-        if (preparedOrders.length > 0) {
-          const preparationTimes = preparedOrders.map(order => {
-            const created = new Date(order.created_at).getTime()
-            const updated = new Date(order.updated_at).getTime()
-            return (updated - created) / (1000 * 60) // Convert to minutes
-          })
-          const avgPreparationTime = preparationTimes.reduce((sum, time) => sum + time, 0) / preparationTimes.length
-          setMenuEfficiencyTime(Math.round(avgPreparationTime * 10) / 10) // Round to 1 decimal
-        } else {
-          setMenuEfficiencyTime(0)
-        }
+      if (!response.ok) {
+        throw new Error(`Analytics API error: ${response.status}`)
       }
 
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch analytics data')
+      }
+
+      const analyticsData = result.data
+      console.log('📊 Analytics data received:', analyticsData)
+
+      // Update all state with the received data
+      setOrderData(analyticsData.orders || [])
+      setRevenueData(analyticsData.revenue || [])
+      setUserActivityData(analyticsData.userActivity || [])
+      setLabels(analyticsData.labels || [])
+      setPopularItemsData(analyticsData.popularItems?.data || [])
+      setPopularItemsLabels(analyticsData.popularItems?.labels || [])
+      setPeakHoursData(analyticsData.peakHours?.data || [])
+      setCustomerSatisfactionData(analyticsData.customerSatisfaction?.data || [0, 0, 0])
+      setAverageOrderValueData(analyticsData.averageOrderValue?.data || [])
+      setAverageOrderValueLabels(analyticsData.averageOrderValue?.labels || [])
+      setOrderFulfillmentTime(analyticsData.metrics?.orderFulfillmentTime || 0)
+      setOrderCompletionRate(analyticsData.metrics?.orderCompletionRate || 0)
+      setNewCustomersCount(analyticsData.metrics?.newCustomersCount || 0)
+      setReturningCustomersRate(analyticsData.metrics?.returningCustomersRate || 0)
+      setTopSellingItemsData(analyticsData.topSellingItems?.data || [])
+      setTopSellingItemsLabels(analyticsData.topSellingItems?.labels || [])
+      setItemRatingsData(analyticsData.itemRatings?.data || [])
+      setItemRatingsLabels(analyticsData.itemRatings?.labels || [])
+      setCategoryPerformanceData(analyticsData.categoryPerformance?.data || [])
+      setCategoryPerformanceLabels(analyticsData.categoryPerformance?.labels || [])
+      setMenuEfficiencyTime(analyticsData.menuEfficiencyTime || 0)
+
+      console.log('✅ Analytics data updated successfully')
+
+
+
+
+
+
+
+
+
     } catch (error) {
-      console.error('Error fetching analytics data:', error)
+      console.error('❌ Error fetching analytics data:', error)
       // Set fallback data
       setOrderData([])
       setRevenueData([])
