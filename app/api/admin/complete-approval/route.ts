@@ -53,44 +53,109 @@ export async function POST(request: NextRequest) {
 
     console.log('Application status updated to approved')
 
-    // Step 3: Find existing user account by application email
+    // Step 3: Find or create user account by application email
     const email = application.contact_email || application.email
     console.log('Looking for user with email:', email)
 
     // Search for user by email in auth.users
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const matchingUser = existingUsers.users.find(user => user.email === email)
+    let matchingUser = existingUsers.users.find(user => user.email === email)
+
+    let userId: string
 
     if (!matchingUser) {
-      console.error('No user account found for email:', email)
-      return NextResponse.json(
-        { error: `No user account found for email: ${email}. Please ensure the user has registered first.` },
-        { status: 400 }
-      )
-    }
+      console.log('No existing user found, creating new user account for:', email)
 
-    const userId = matchingUser.id
-    console.log('Found existing user:', userId, 'with email:', matchingUser.email)
+      // Create a new user account
+      const tempPassword = crypto.randomUUID().substring(0, 12) + '!A1' // Generate secure temp password
 
-    // Step 4: Activate the user profile
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        is_active: true, // Activate the account
-        role: 'cafeteria_manager', // Ensure correct role
-        updated_at: new Date().toISOString()
+      const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          full_name: `${application.owner_first_name || ''} ${application.owner_last_name || ''}`.trim() || 'Cafeteria Owner',
+          role: 'cafeteria_manager',
+          created_via: 'admin_approval'
+        }
       })
-      .eq('id', userId)
 
-    if (profileError) {
-      console.error('Error activating user profile:', profileError)
-      return NextResponse.json(
-        { error: 'Failed to activate user account' },
-        { status: 500 }
-      )
+      if (createUserError || !newUser.user) {
+        console.error('Error creating user account:', createUserError)
+        return NextResponse.json(
+          { error: `Failed to create user account for ${email}: ${createUserError?.message}` },
+          { status: 500 }
+        )
+      }
+
+      userId = newUser.user.id
+      console.log('Created new user account:', userId, 'with email:', email)
+
+      // Send password reset email so user can set their own password
+      try {
+        await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: email,
+        })
+        console.log('Password reset email sent to:', email)
+      } catch (resetError) {
+        console.warn('Could not send password reset email:', resetError)
+      }
+
+    } else {
+      userId = matchingUser.id
+      console.log('Found existing user:', userId, 'with email:', matchingUser.email)
     }
 
-    console.log('User profile activated for user:', userId)
+    // Step 4: Create or update user profile
+    // First check if profile exists
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single()
+
+    if (existingProfile) {
+      // Update existing profile
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          is_active: true, // Activate the account
+          role: 'cafeteria_manager', // Ensure correct role
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+
+      if (profileError) {
+        console.error('Error updating user profile:', profileError)
+        return NextResponse.json(
+          { error: 'Failed to update user account' },
+          { status: 500 }
+        )
+      }
+      console.log('User profile updated for user:', userId)
+    } else {
+      // Create new profile
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: userId,
+          full_name: `${application.owner_first_name || ''} ${application.owner_last_name || ''}`.trim() || 'Cafeteria Owner',
+          role: 'cafeteria_manager',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+
+      if (profileError) {
+        console.error('Error creating user profile:', profileError)
+        return NextResponse.json(
+          { error: 'Failed to create user profile' },
+          { status: 500 }
+        )
+      }
+      console.log('User profile created for user:', userId)
+    }
 
     // Step 5: Find and update existing cafeteria or create new one
     console.log('Looking for existing cafeteria for user:', userId)
@@ -181,13 +246,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Cafeteria application approved and account created successfully',
+      message: matchingUser
+        ? 'Cafeteria application approved successfully'
+        : 'Cafeteria application approved and new user account created successfully',
       data: {
         applicationId,
         userId,
         cafeteriaId,
         email,
-        cafeteriaName: application.business_name || application.cafeteria_name
+        cafeteriaName: application.business_name || application.cafeteria_name,
+        newUserCreated: !matchingUser,
+        passwordResetRequired: !matchingUser
       }
     })
 
