@@ -562,14 +562,30 @@ export default function UserManagement() {
   // Open edit dialog with user data
   const openEditDialog = (user: User) => {
     setCurrentUser(user)
+
+    // Map display role names to database values
+    let mappedRole = user.role
+    if (user.role === 'Cafeteria Owner') mappedRole = 'cafeteria_manager'
+    else if (user.role === 'Admin') mappedRole = 'admin'
+    else if (user.role === 'Student' || user.role === 'User') mappedRole = 'student'
+    else if (user.role === 'cafeteria_manager' || user.role === 'admin' || user.role === 'student') {
+      mappedRole = user.role // Already in correct format
+    }
+
+    // Map display status names to database values
+    let mappedStatus = user.status
+    if (user.status === 'Active') mappedStatus = 'active'
+    else if (user.status === 'Inactive') mappedStatus = 'inactive'
+    else if (user.status === 'active' || user.status === 'inactive') {
+      mappedStatus = user.status // Already in correct format
+    }
+
     setFormData({
       name: user.name,
       email: user.email,
       password: "", // Don't pre-fill password
-      role: user.role === 'Cafeteria Owner' ? 'cafeteria_manager' :
-            user.role === 'Admin' ? 'admin' :
-            user.role === 'Student' ? 'student' : user.role,
-      status: user.status,
+      role: mappedRole,
+      status: mappedStatus,
       cafeteria: user.cafeteria === "-" ? "" : user.cafeteria,
       phone: user.phone || "",
     })
@@ -1044,9 +1060,9 @@ export default function UserManagement() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Cafeteria Owner">Cafeteria Owner</SelectItem>
-                  <SelectItem value="User">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="cafeteria_manager">Cafeteria Manager</SelectItem>
+                  <SelectItem value="student">Student</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1057,8 +1073,8 @@ export default function UserManagement() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
