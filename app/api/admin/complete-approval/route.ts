@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       cafeteriaId = existingCafeteria.id
       console.log('Updating existing cafeteria:', cafeteriaId)
 
-      const { error: updateError } = await supabaseAdmin
+      const { data: updatedCafeteria, error: updateError } = await supabaseAdmin
         .from('cafeterias')
         .update({
           name: application.business_name || application.cafeteria_name || existingCafeteria.name,
@@ -122,9 +122,12 @@ export async function POST(request: NextRequest) {
           description: application.description || application.cafeteria_description || existingCafeteria.description,
           approval_status: 'approved',
           is_active: true, // Activate cafeteria
+          operational_status: 'open', // Set operational status
           updated_at: new Date().toISOString()
         })
         .eq('id', cafeteriaId)
+        .select()
+        .single()
 
       if (updateError) {
         console.error('Error updating cafeteria:', updateError)
@@ -134,13 +137,13 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log('✅ Cafeteria updated and activated:', cafeteriaId)
+      console.log('✅ Cafeteria updated and activated:', cafeteriaId, updatedCafeteria)
     } else {
       // Create new cafeteria
       cafeteriaId = crypto.randomUUID()
       console.log('Creating new cafeteria:', cafeteriaId)
 
-      const { error: createError } = await supabaseAdmin
+      const { data: newCafeteria, error: createError } = await supabaseAdmin
         .from('cafeterias')
         .insert({
           id: cafeteriaId,
@@ -150,9 +153,12 @@ export async function POST(request: NextRequest) {
           owner_id: userId,
           approval_status: 'approved',
           is_active: true, // Activate cafeteria
+          operational_status: 'open', // Set operational status
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
+        .select()
+        .single()
 
       if (createError) {
         console.error('Error creating cafeteria:', createError)
@@ -162,10 +168,24 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log('✅ Cafeteria created and activated:', cafeteriaId)
+      console.log('✅ Cafeteria created and activated:', cafeteriaId, newCafeteria)
     }
 
-    // Step 6: Log the approval for audit trail
+    // Step 6: Update application with cafeteria_id link
+    const { error: linkError } = await supabaseAdmin
+      .from('cafeteria_applications')
+      .update({
+        cafeteria_id: cafeteriaId,
+        review_notes: `Application approved and cafeteria activated successfully. Cafeteria ID: ${cafeteriaId}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', applicationId)
+
+    if (linkError) {
+      console.warn('Warning: Could not link application to cafeteria:', linkError)
+    }
+
+    // Step 7: Log the approval for audit trail
     try {
       await supabaseAdmin
         .from('admin_actions')
