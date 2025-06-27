@@ -7,6 +7,15 @@ import { createSupabaseAdmin } from '@/lib/supabase'
 export async function GET(request: NextRequest) {
   try {
     const supabaseAdmin = createSupabaseAdmin()
+
+    if (!supabaseAdmin) {
+      console.error('❌ Dashboard API: Supabase admin client not initialized')
+      return NextResponse.json(
+        { error: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const timeRange = searchParams.get('timeRange') || 'This Month'
     const cafeteriaId = searchParams.get('cafeteriaId')
