@@ -391,9 +391,9 @@ export default function CafeteriaSupport() {
                     onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
                     className="w-full rounded-md border border-white/20 bg-white/5 text-white px-3 py-2 text-sm glass-effect hover:border-emerald-500/50 transition-all duration-300"
                   >
-                    <option value="low" className="bg-[#1a1f36] text-white">Low</option>
-                    <option value="medium" className="bg-[#1a1f36] text-white">Medium</option>
-                    <option value="high" className="bg-[#1a1f36] text-white">High</option>
+                    <option value="low" className="glass-effect text-white">Low</option>
+                    <option value="medium" className="glass-effect text-white">Medium</option>
+                    <option value="high" className="glass-effect text-white">High</option>
                   </select>
                 </div>
 
@@ -475,8 +475,8 @@ export default function CafeteriaSupport() {
                         <AvatarFallback>CM</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-2">
-                        <div className="bg-muted p-4 rounded-lg">
-                          <p>{selectedTicket.content}</p>
+                        <div className="glass-effect border-white/10 p-4 rounded-lg">
+                          <p className="text-white">{selectedTicket.content}</p>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           You • {new Date(selectedTicket.timestamp).toLocaleString()}

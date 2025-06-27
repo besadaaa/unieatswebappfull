@@ -386,7 +386,7 @@ export default function CustomerServicePage() {
             <input
               type="text"
               placeholder="Search tickets..."
-              className="pl-8 h-9 rounded-md border border-white/20 bg-black/20 backdrop-blur-sm px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white placeholder:text-white/50"
+              className="pl-8 h-9 rounded-md border border-white/20 glass-effect px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white placeholder:text-white/50"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -411,26 +411,26 @@ export default function CustomerServicePage() {
           </Button>
           <div className="relative">
             <select
-              className="h-9 rounded-md border border-white/20 bg-black/20 backdrop-blur-sm px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white"
+              className="h-9 rounded-md border border-white/20 glass-effect px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all" className="bg-gray-800 text-white">All Statuses</option>
-              <option value="open" className="bg-gray-800 text-white">Open</option>
-              <option value="in_progress" className="bg-gray-800 text-white">In Progress</option>
-              <option value="resolved" className="bg-gray-800 text-white">Resolved</option>
-              <option value="closed" className="bg-gray-800 text-white">Closed</option>
+              <option value="all" className="glass-effect text-white">All Statuses</option>
+              <option value="open" className="glass-effect text-white">Open</option>
+              <option value="in_progress" className="glass-effect text-white">In Progress</option>
+              <option value="resolved" className="glass-effect text-white">Resolved</option>
+              <option value="closed" className="glass-effect text-white">Closed</option>
             </select>
           </div>
           <div className="relative">
             <select
-              className="h-9 rounded-md border border-white/20 bg-black/20 backdrop-blur-sm px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white"
+              className="h-9 rounded-md border border-white/20 glass-effect px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white"
               value={userTypeFilter}
               onChange={(e) => setUserTypeFilter(e.target.value)}
             >
-              <option value="all" className="bg-gray-800 text-white">All Users</option>
-              <option value="cafeteria" className="bg-gray-800 text-white">Cafeteria Owners</option>
-              <option value="student" className="bg-gray-800 text-white">Students</option>
+              <option value="all" className="glass-effect text-white">All Users</option>
+              <option value="cafeteria" className="glass-effect text-white">Cafeteria Owners</option>
+              <option value="student" className="glass-effect text-white">Students</option>
             </select>
           </div>
         </div>
@@ -535,9 +535,9 @@ export default function CustomerServicePage() {
                       <AvatarFallback>{selectedMessage.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 space-y-2">
-                      <div className="bg-muted p-4 rounded-lg max-w-[80%]">
-                        <p>{selectedMessage.description}</p>
-                        <div className="text-xs text-muted-foreground mt-1">
+                      <div className="glass-effect border-white/10 p-4 rounded-lg max-w-[80%]">
+                        <p className="text-white">{selectedMessage.description}</p>
+                        <div className="text-xs text-white/70 mt-1">
                           {selectedMessage.time}
                         </div>
                       </div>
@@ -581,9 +581,9 @@ export default function CustomerServicePage() {
                             <AvatarFallback>{selectedMessage.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-2">
-                            <div className="bg-muted p-4 rounded-lg max-w-[80%]">
-                              <p>{resp.content}</p>
-                              <div className="text-xs text-muted-foreground mt-1">
+                            <div className="glass-effect border-white/10 p-4 rounded-lg max-w-[80%]">
+                              <p className="text-white">{resp.content}</p>
+                              <div className="text-xs text-white/70 mt-1">
                                 {resp.formattedTime || new Date(resp.timestamp).toLocaleString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
@@ -604,7 +604,7 @@ export default function CustomerServicePage() {
                     <div className="pt-4 border-t border-white/10">
                       <Textarea
                         placeholder="Type your response..."
-                        className="mb-2 glass-effect border-white/20 bg-black/20 backdrop-blur-sm text-white placeholder:text-white/50 focus:border-emerald-500/50"
+                        className="mb-2 glass-effect border-white/20 text-white placeholder:text-white/50 focus:border-emerald-500/50"
                         value={response}
                         onChange={(e) => setResponse(e.target.value)}
                       />

@@ -1576,16 +1576,16 @@ export default function MenuPage() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+                              <div className="w-full h-full glass-effect border-white/10 flex items-center justify-center text-white/50">
                                 No image
                               </div>
                             )}
                             {isUploading && (
-                              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                              <div className="absolute inset-0 glass-effect bg-black/50 flex items-center justify-center">
                                 <div className="w-full px-4">
-                                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div className="h-2 glass-effect border-white/20 rounded-full overflow-hidden">
                                     <div
-                                      className="h-full bg-green-500 transition-all duration-300"
+                                      className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-300"
                                       style={{ width: `${uploadProgress}%` }}
                                     ></div>
                                   </div>
@@ -1707,15 +1707,15 @@ export default function MenuPage() {
                       </div>
 
                       {showIngredientSelector && (
-                        <div className="border border-gray-600 rounded-lg p-4 space-y-3 bg-gray-800">
-                          <Label className="text-sm font-medium text-gray-200">Select from Inventory:</Label>
+                        <div className="glass-effect border-white/20 rounded-lg p-4 space-y-3">
+                          <Label className="text-sm font-medium text-white">Select from Inventory:</Label>
                           <div className="max-h-48 overflow-y-auto space-y-2">
                             {inventoryItems.length > 0 ? (
                               inventoryItems.map((item) => (
-                                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600 hover:border-orange-500 hover:bg-gray-650 transition-colors">
+                                <div key={item.id} className="flex items-center justify-between p-3 glass-effect rounded-lg border border-white/10 hover:border-orange-500/50 transition-colors">
                                   <div className="flex-1">
                                     <div className="font-medium text-white">{item.name}</div>
-                                    <div className="text-sm text-gray-300">
+                                    <div className="text-sm text-white/70">
                                       {item.quantity} {item.unit} available
                                     </div>
                                   </div>
@@ -1725,7 +1725,7 @@ export default function MenuPage() {
                                       step="0.1"
                                       min="0.1"
                                       placeholder="Qty"
-                                      className="w-20 text-center bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-orange-500"
+                                      className="w-20 text-center glass-effect border-white/20 text-white placeholder-white/50 focus:border-orange-500/50"
                                       id={`qty-input-${item.id}`}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") {
@@ -1741,7 +1741,7 @@ export default function MenuPage() {
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="bg-orange-600 hover:bg-orange-700 text-white border-0"
+                                      className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0"
                                       onClick={(e) => {
                                         const input = document.getElementById(`qty-input-${item.id}`) as HTMLInputElement
                                         const quantity = parseFloat(input.value)
@@ -1770,7 +1770,7 @@ export default function MenuPage() {
                         {selectedIngredients.length > 0 ? (
                           <div className="space-y-2">
                             {selectedIngredients.map((ingredient) => (
-                              <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 bg-orange-900/20 rounded-lg border border-orange-500/30">
+                              <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 glass-effect rounded-lg border border-orange-500/30"
                                 <div className="flex-1">
                                   <span className="font-medium text-white">{ingredient.name}</span>
                                 </div>
@@ -1786,14 +1786,14 @@ export default function MenuPage() {
                                         handleUpdateIngredientQuantity(ingredient.inventoryItemId, newQuantity)
                                       }
                                     }}
-                                    className="w-20 bg-gray-600 border-gray-500 text-white text-center focus:border-orange-500"
+                                    className="w-20 glass-effect border-white/20 text-white text-center focus:border-orange-500/50"
                                   />
-                                  <span className="text-sm text-gray-300 min-w-[3rem]">{ingredient.unit}</span>
+                                  <span className="text-sm text-white/70 min-w-[3rem]">{ingredient.unit}</span>
                                   <Button
                                     type="button"
                                     variant="destructive"
                                     size="sm"
-                                    className="bg-red-600 hover:bg-red-700 border-0"
+                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 border-0"
                                     onClick={() => handleRemoveIngredientDetail(ingredient.inventoryItemId)}
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -2137,12 +2137,12 @@ export default function MenuPage() {
                     }}
                   />
                 ) : (
-                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-                    <span className="text-gray-400">No image</span>
+                  <div className="w-full h-48 glass-effect border-white/10 flex items-center justify-center">
+                    <span className="text-white/50">No image</span>
                   </div>
                 )}
                 {!item.available && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <div className="absolute inset-0 glass-effect bg-black/50 flex items-center justify-center">
                     <Badge variant="destructive" className="text-lg px-3 py-1">
                       Unavailable
                     </Badge>
@@ -2452,15 +2452,15 @@ export default function MenuPage() {
                   </div>
 
                   {showIngredientSelector && (
-                    <div className="border border-gray-600 rounded-lg p-4 space-y-3 bg-gray-800">
-                      <Label className="text-sm font-medium text-gray-200">Select from Inventory:</Label>
+                    <div className="glass-effect border-white/20 rounded-lg p-4 space-y-3">
+                      <Label className="text-sm font-medium text-white">Select from Inventory:</Label>
                       <div className="max-h-48 overflow-y-auto space-y-2">
                         {inventoryItems.length > 0 ? (
                           inventoryItems.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600 hover:border-orange-500 hover:bg-gray-650 transition-colors">
+                            <div key={item.id} className="flex items-center justify-between p-3 glass-effect rounded-lg border border-white/10 hover:border-orange-500/50 transition-colors">
                               <div className="flex-1">
                                 <div className="font-medium text-white">{item.name}</div>
-                                <div className="text-sm text-gray-300">
+                                <div className="text-sm text-white/70">
                                   {item.quantity} {item.unit} available
                                 </div>
                               </div>
@@ -2470,7 +2470,7 @@ export default function MenuPage() {
                                   step="0.1"
                                   min="0.1"
                                   placeholder="Qty"
-                                  className="w-20 text-center bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-orange-500"
+                                  className="w-20 text-center glass-effect border-white/20 text-white placeholder-white/50 focus:border-orange-500/50"
                                   id={`edit-qty-input-${item.id}`}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
@@ -2486,7 +2486,7 @@ export default function MenuPage() {
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="bg-orange-600 hover:bg-orange-700 text-white border-0"
+                                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0"
                                   onClick={(e) => {
                                     const input = document.getElementById(`edit-qty-input-${item.id}`) as HTMLInputElement
                                     const quantity = parseFloat(input.value)
@@ -2511,11 +2511,11 @@ export default function MenuPage() {
                   )}
 
                   <div className="space-y-2">
-                    <Label className="text-gray-200">Selected Ingredients:</Label>
+                    <Label className="text-white">Selected Ingredients:</Label>
                     {selectedIngredients.length > 0 ? (
                       <div className="space-y-2">
                         {selectedIngredients.map((ingredient) => (
-                          <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 bg-orange-900/20 rounded-lg border border-orange-500/30">
+                          <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 glass-effect rounded-lg border border-orange-500/30">
                             <div className="flex-1">
                               <span className="font-medium text-white">{ingredient.name}</span>
                             </div>
@@ -2531,14 +2531,14 @@ export default function MenuPage() {
                                     handleUpdateIngredientQuantity(ingredient.inventoryItemId, newQuantity)
                                   }
                                 }}
-                                className="w-20 bg-gray-600 border-gray-500 text-white text-center focus:border-orange-500"
+                                className="w-20 glass-effect border-white/20 text-white text-center focus:border-orange-500/50"
                               />
-                              <span className="text-sm text-gray-300 min-w-[3rem]">{ingredient.unit}</span>
+                              <span className="text-sm text-white/70 min-w-[3rem]">{ingredient.unit}</span>
                               <Button
                                 type="button"
                                 variant="destructive"
                                 size="sm"
-                                className="bg-red-600 hover:bg-red-700 border-0"
+                                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 border-0"
                                 onClick={() => handleRemoveIngredientDetail(ingredient.inventoryItemId)}
                               >
                                 <Trash2 className="h-4 w-4" />
