@@ -9,33 +9,8 @@ import { toast } from "@/components/ui/use-toast"
 import { getPublicSystemSettings } from "@/lib/supabase"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// Mock careers data
-const mockCareers = [
-  {
-    id: 1,
-    title: "Full Stack Developer",
-    department: "Engineering",
-    location: "Cairo, Egypt",
-    description: "Join our team to build the next generation of campus food ordering systems.",
-    requirements: "Experience with React, Node.js, and database design.",
-  },
-  {
-    id: 2,
-    title: "UX/UI Designer",
-    department: "Design",
-    location: "Remote",
-    description: "Help us create intuitive and beautiful user experiences for our platform.",
-    requirements: "Portfolio showcasing user-centered design work and experience with Figma.",
-  },
-  {
-    id: 3,
-    title: "Customer Success Manager",
-    department: "Operations",
-    location: "Alexandria, Egypt",
-    description: "Work with cafeteria owners to ensure they get the most out of our platform.",
-    requirements: "Experience in customer success or account management roles.",
-  },
-]
+// No open positions currently
+const mockCareers: any[] = []
 
 export default function AboutPage() {
   const [loading, setLoading] = useState(false)
@@ -132,7 +107,7 @@ export default function AboutPage() {
                       faculty, and staff order food from cafeterias across university campuses.
                     </p>
                     <p className="text-sm mb-2">
-                      Founded in 2023, our mission is to reduce wait times, minimize food waste, and create a more
+                      Founded in 2025, our mission is to reduce wait times, minimize food waste, and create a more
                       efficient dining experience for everyone on campus.
                     </p>
                     <p className="text-sm">
@@ -215,11 +190,19 @@ export default function AboutPage() {
               <CardContent className="p-6 relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-full blur-2xl"></div>
                 <h3 className="text-xl font-bold mb-4 gradient-text">Our Team</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <p className="text-sm text-slate-300 leading-relaxed mb-4">
                   UniEats was founded by a group of university students who experienced firsthand the challenges of
-                  campus dining. Today, our team consists of developers, designers, and food service experts dedicated
-                  to improving the campus dining experience.
+                  campus dining. Our dedicated team includes:
                 </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                  <div className="text-slate-300">• Besada Zekry</div>
+                  <div className="text-slate-300">• Youssef Gomaa</div>
+                  <div className="text-slate-300">• Aya Awad</div>
+                  <div className="text-slate-300">• Mahmoud Mamesh</div>
+                  <div className="text-slate-300">• Ahmed Alaa</div>
+                  <div className="text-slate-300">• Mohamed Nasser</div>
+                  <div className="text-slate-300">• Abdullah Ahmed</div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -228,19 +211,19 @@ export default function AboutPage() {
             <Card className="w-full max-w-3xl modern-card glass-effect hover-lift">
               <CardContent className="p-6 relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-full blur-2xl"></div>
-                <h3 className="text-xl font-bold mb-6 gradient-text">Our Impact</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <h3 className="text-xl font-bold mb-6 gradient-text">Our Vision</h3>
+                <div className="space-y-4">
                   <div className="p-4 rounded-lg glass-effect border border-white/10">
-                    <div className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-2">25+</div>
-                    <div className="text-sm text-slate-300 font-medium">Campuses</div>
+                    <h4 className="font-bold text-white mb-2">🎯 Mission</h4>
+                    <p className="text-sm text-slate-300">To revolutionize campus dining by connecting students with their favorite meals while empowering local cafeterias to thrive in the digital age.</p>
                   </div>
                   <div className="p-4 rounded-lg glass-effect border border-white/10">
-                    <div className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-2">100+</div>
-                    <div className="text-sm text-slate-300 font-medium">Cafeterias</div>
+                    <h4 className="font-bold text-white mb-2">🚀 Goals</h4>
+                    <p className="text-sm text-slate-300">Reduce wait times, minimize food waste, and create a seamless ordering experience for university communities across Egypt.</p>
                   </div>
                   <div className="p-4 rounded-lg glass-effect border border-white/10">
-                    <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-violet-400 bg-clip-text text-transparent mb-2">50K+</div>
-                    <div className="text-sm text-slate-300 font-medium">Daily Orders</div>
+                    <h4 className="font-bold text-white mb-2">🌟 Future</h4>
+                    <p className="text-sm text-slate-300">Expanding to universities nationwide, building the largest campus food network in Egypt with innovative features and sustainable practices.</p>
                   </div>
                 </div>
               </CardContent>
@@ -261,34 +244,53 @@ export default function AboutPage() {
                 </div>
 
                 <div className="space-y-6">
-                  {mockCareers.map((career) => (
-                    <Card key={career.id} className="modern-card glass-effect border border-white/10">
-                      <CardContent className="p-6">
-                        <h3 className="text-xl font-bold mb-2 text-white">{career.title}</h3>
-                        <div className="flex items-center text-sm text-slate-400 mb-4">
-                          <span>{career.department}</span>
-                          <span className="mx-2">•</span>
-                          <span>{career.location}</span>
-                        </div>
-                        <p className="mb-4 text-slate-300">{career.description}</p>
-                        <div className="mb-4">
-                          <strong className="block mb-2 text-white">Requirements:</strong>
-                          <p className="text-slate-300">{career.requirements}</p>
-                        </div>
-                        <Button
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white btn-modern"
-                          onClick={() => {
-                            toast({
-                              title: "Application Started",
-                              description: `You've started an application for ${career.title}.`,
-                            })
-                          }}
-                        >
-                          Apply Now
-                        </Button>
+                  {mockCareers.length > 0 ? (
+                    mockCareers.map((career) => (
+                      <Card key={career.id} className="modern-card glass-effect border border-white/10">
+                        <CardContent className="p-6">
+                          <h3 className="text-xl font-bold mb-2 text-white">{career.title}</h3>
+                          <div className="flex items-center text-sm text-slate-400 mb-4">
+                            <span>{career.department}</span>
+                            <span className="mx-2">•</span>
+                            <span>{career.location}</span>
+                          </div>
+                          <p className="mb-4 text-slate-300">{career.description}</p>
+                          <div className="mb-4">
+                            <strong className="block mb-2 text-white">Requirements:</strong>
+                            <p className="text-slate-300">{career.requirements}</p>
+                          </div>
+                          <Button
+                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white btn-modern"
+                            onClick={() => {
+                              toast({
+                                title: "Application Started",
+                                description: `You've started an application for ${career.title}.`,
+                              })
+                            }}
+                          >
+                            Apply Now
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="modern-card glass-effect border border-white/10">
+                      <CardContent className="p-8 text-center">
+                        <div className="text-6xl mb-4">💼</div>
+                        <h3 className="text-xl font-bold mb-2 text-white">No Open Positions</h3>
+                        <p className="text-slate-300 mb-4">
+                          We don't have any open positions at the moment, but we're always growing!
+                          Check back later or follow us on social media for updates.
+                        </p>
+                        <p className="text-sm text-slate-400">
+                          Interested in joining our team? Send us your resume at{" "}
+                          <a href="mailto:unieats2025@gmail.com" className="text-blue-400 hover:text-blue-300">
+                            unieats2025@gmail.com
+                          </a>
+                        </p>
                       </CardContent>
                     </Card>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>

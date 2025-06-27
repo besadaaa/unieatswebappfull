@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Filter, Download, FileText, CheckCircle2, Loader2 } from "lucide-react"
+import { Download, FileText, CheckCircle2, Loader2, BarChart3, TrendingUp, Users, Package, MessageSquare } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +15,6 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
-import { supabase } from "@/lib/supabase"
 import { PageHeader } from "@/components/admin/page-header"
 
 interface Report {
@@ -25,19 +22,55 @@ interface Report {
   name: string
   type: string
   period: string
-  generated: string
   format: string
-  file_url?: string
+  file_url: string
   file_size?: number
+  total_records?: number
+  status?: string
+  created_at: string
+  updated_at?: string
 }
 
-export default function Reports() {
-  // State for reports and search
-  const [reports, setReports] = useState<Report[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filteredReports, setFilteredReports] = useState<Report[]>([])
-  const [loading, setLoading] = useState(true)
+// Report type definitions
+const REPORT_TYPES = [
+  {
+    id: 'revenue',
+    name: 'Admin Revenue Report',
+    description: 'Actual admin revenue: 4% user fee (max 20 EGP) + 10% vendor commission',
+    icon: TrendingUp,
+    color: 'text-green-500'
+  },
+  {
+    id: 'orders',
+    name: 'Orders Report',
+    description: 'Complete order history with payments, ratings, and customer details',
+    icon: BarChart3,
+    color: 'text-blue-500'
+  },
+  {
+    id: 'users',
+    name: 'Users Report',
+    description: 'User profiles, activity, spending patterns, and account status',
+    icon: Users,
+    color: 'text-purple-500'
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory Report',
+    description: 'Current stock levels, low stock alerts, and inventory status',
+    icon: Package,
+    color: 'text-orange-500'
+  },
+  {
+    id: 'feedback',
+    name: 'Customer Feedback',
+    description: 'Order ratings, reviews, and customer satisfaction data',
+    icon: MessageSquare,
+    color: 'text-pink-500'
+  }
+]
 
+export default function Reports() {
   // State for report generation dialog
   const [open, setOpen] = useState(false)
   const [reportType, setReportType] = useState("")
@@ -46,64 +79,12 @@ export default function Reports() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationComplete, setGenerationComplete] = useState(false)
   const [generationStep, setGenerationStep] = useState(0)
+  const [loading, setLoading] = useState(true)
 
-  const [reportTypeFilter, setReportTypeFilter] = useState("All Types")
-
-  // Load reports from API
+  // Initialize loading state
   useEffect(() => {
-    const loadReports = async () => {
-      try {
-        setLoading(true)
-
-        const response = await fetch('/api/reports')
-        const data = await response.json()
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch reports')
-        }
-
-        setReports(data.reports || [])
-        setFilteredReports(data.reports || [])
-
-      } catch (error) {
-        console.error('Error loading reports:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load reports. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadReports()
+    setLoading(false)
   }, [])
-
-  // Filter reports based on search term
-  useEffect(() => {
-    let filtered = reports
-
-    // Filter by search term
-    if (searchTerm.trim() !== "") {
-      const lowercasedSearch = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (report) =>
-          report.name.toLowerCase().includes(lowercasedSearch) ||
-          report.type.toLowerCase().includes(lowercasedSearch) ||
-          report.period.toLowerCase().includes(lowercasedSearch) ||
-          report.generated.toLowerCase().includes(lowercasedSearch) ||
-          report.format.toLowerCase().includes(lowercasedSearch),
-      )
-    }
-
-    // Filter by report type
-    if (reportTypeFilter !== "All Types") {
-      filtered = filtered.filter((report) => report.type === reportTypeFilter)
-    }
-
-    setFilteredReports(filtered)
-  }, [searchTerm, reports, reportTypeFilter])
 
   // Function to generate a new report
   const generateReport = async () => {
@@ -125,31 +106,10 @@ export default function Reports() {
       setTimeout(() => setGenerationStep(3), 1000)
       setTimeout(() => setGenerationStep(4), 1500)
 
-      // Generate report via API
+      // Generate and download report directly
       setTimeout(async () => {
         try {
-          const response = await fetch('/api/reports', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              reportType,
-              reportPeriod,
-              reportFormat
-            })
-          })
-
-          const data = await response.json()
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to generate report')
-          }
-
-          // Add the new report to the local state
-          const newReport = data.report
-          setReports([newReport, ...reports])
-          setFilteredReports([newReport, ...filteredReports])
+          await downloadReport(reportType, reportFormat)
 
           setIsGenerating(false)
           setGenerationComplete(true)
@@ -161,11 +121,6 @@ export default function Reports() {
             setReportType("")
             setReportPeriod("")
             setReportFormat("")
-
-            toast({
-              title: "Report Generated",
-              description: `Your ${reportType} report has been generated successfully.`,
-            })
           }, 1500)
 
         } catch (error) {
@@ -173,7 +128,7 @@ export default function Reports() {
           setIsGenerating(false)
           toast({
             title: "Error",
-            description: "Failed to generate report. Please try again.",
+            description: error instanceof Error ? error.message : "Failed to generate report. Please try again.",
             variant: "destructive",
           })
         }
@@ -184,138 +139,89 @@ export default function Reports() {
       setIsGenerating(false)
       toast({
         title: "Error",
-        description: "Failed to generate report. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate report. Please try again.",
         variant: "destructive",
       })
     }
   }
 
-  // Function to create sample data for testing
-  const createSampleData = async () => {
-    setIsGenerating(true)
-    try {
-      const response = await fetch('/api/admin/sample-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to create sample data')
-      }
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: `Sample data created: ${result.data.orders_created} orders, ${result.data.total_revenue} EGP revenue`,
-        })
-      } else {
-        throw new Error(result.error || 'Failed to create sample data')
-      }
-    } catch (error) {
-      console.error('Error creating sample data:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create sample data",
-        variant: "destructive",
-      })
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  // Function to download a report
-  const downloadReport = async (report: Report) => {
+  // Function to download report
+  const downloadReport = async (reportType: string, format: string) => {
     try {
       toast({
-        title: "Download Starting",
-        description: `Preparing ${report.name} for download...`,
+        title: "Generating Report",
+        description: `Generating ${reportType} report in ${format.toUpperCase()} format...`,
       })
 
-      // Make request to download API with proper error handling
-      const downloadUrl = report.file_url.startsWith('http') ? report.file_url : `${window.location.origin}${report.file_url}`
-      const response = await fetch(downloadUrl, {
+      console.log(`Downloading ${reportType} report in ${format} format`)
+
+      const response = await fetch(`/api/reports/generate?type=${reportType}&format=${format}`, {
         method: 'GET',
         headers: {
-          'Accept': 'application/octet-stream, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+          'Accept': format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         }
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Download response error:', response.status, errorText)
-        throw new Error(`Server returned ${response.status}: ${response.statusText}`)
+        let errorMessage = 'Failed to generate report'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
-      // Get content type and determine file extension
-      const contentType = response.headers.get('content-type') || ''
-      let fileExtension = report.format.toLowerCase()
-
-      if (contentType.includes('pdf')) {
-        fileExtension = 'pdf'
-      } else if (contentType.includes('spreadsheetml') || contentType.includes('excel')) {
-        fileExtension = 'xlsx'
-      } else if (contentType.includes('csv')) {
-        fileExtension = 'csv'
-      }
-
-      // Create blob and download
       const blob = await response.blob()
 
       if (blob.size === 0) {
-        throw new Error('Downloaded file is empty')
+        throw new Error('Generated file is empty')
       }
 
+      // Create download link
       const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
 
-      // Create a proper filename
-      const timestamp = new Date().toISOString().split('T')[0]
-      const cleanName = report.name.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-')
-      link.download = `${cleanName}-${timestamp}.${fileExtension}`
+      // Get filename from response headers or create one
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = `${reportType}-report-${new Date().toISOString().split('T')[0]}.${format}`
 
-      // Trigger download
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 100)
 
       toast({
-        title: "Download Complete",
-        description: `${report.name} has been downloaded successfully.`,
+        title: "Success",
+        description: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report downloaded successfully`,
       })
 
     } catch (error) {
       console.error('Error downloading report:', error)
       toast({
         title: "Download Failed",
-        description: error.message || "Failed to download the report. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to download report. Please try again.",
         variant: "destructive",
       })
     }
   }
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      const dropdown = document.getElementById("typeDropdown")
-      if (
-        dropdown &&
-        !dropdown.contains(event.target) &&
-        !event.target.closest("button")?.contains(dropdown.previousElementSibling)
-      ) {
-        dropdown.classList.add("hidden")
-      }
-    }
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
 
   if (loading) {
     return (
@@ -341,15 +247,6 @@ export default function Reports() {
 
             <div className="mt-4 md:mt-0 flex gap-3 animate-slide-in-right">
                 <Button
-                  variant="outline"
-                  className="glass-effect border-white/20 hover:border-blue-500/50 btn-modern"
-                  onClick={createSampleData}
-                  disabled={isGenerating}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Create Sample Data
-                </Button>
-                <Button
                   className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white btn-modern shadow-lg hover:shadow-xl transition-all duration-300"
                   onClick={() => {
                     console.log("Opening dialog")
@@ -362,152 +259,46 @@ export default function Reports() {
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                <Input
-                  placeholder="Search reports..."
-                  className="pl-10 bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {REPORT_TYPES.map((reportType) => {
+                const IconComponent = reportType.icon
+                return (
+                  <Card key={reportType.id} className="modern-card glass-effect hover-lift cursor-pointer transition-all duration-300 hover:scale-105">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className={`p-3 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900`}>
+                          <IconComponent className={`h-6 w-6 ${reportType.color}`} />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">{reportType.name}</h3>
+                          <p className="text-sm text-gray-400">{reportType.description}</p>
+                        </div>
+                      </div>
 
-              <div className="flex gap-2">
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    className="bg-[#0f1424] border-gray-700 flex items-center"
-                    onClick={() => document.getElementById("typeDropdown").classList.toggle("hidden")}
-                  >
-                    {reportTypeFilter}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="ml-2"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </Button>
-                  <div
-                    id="typeDropdown"
-                    className="absolute z-10 mt-1 hidden w-full bg-[#1a1f36] border border-gray-700 rounded-md shadow-lg"
-                  >
-                    <div className="py-1">
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-[#0f1424]"
-                        onClick={() => {
-                          setReportTypeFilter("All Types")
-                          document.getElementById("typeDropdown").classList.add("hidden")
-                        }}
-                      >
-                        All Types
-                      </button>
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-[#0f1424]"
-                        onClick={() => {
-                          setReportTypeFilter("Revenue")
-                          document.getElementById("typeDropdown").classList.add("hidden")
-                        }}
-                      >
-                        Revenue
-                      </button>
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-[#0f1424]"
-                        onClick={() => {
-                          setReportTypeFilter("Performance")
-                          document.getElementById("typeDropdown").classList.add("hidden")
-                        }}
-                      >
-                        Performance
-                      </button>
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-[#0f1424]"
-                        onClick={() => {
-                          setReportTypeFilter("Users")
-                          document.getElementById("typeDropdown").classList.add("hidden")
-                        }}
-                      >
-                        Users
-                      </button>
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-[#0f1424]"
-                        onClick={() => {
-                          setReportTypeFilter("Orders")
-                          document.getElementById("typeDropdown").classList.add("hidden")
-                        }}
-                      >
-                        Orders
-                      </button>
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-[#0f1424]"
-                        onClick={() => {
-                          setReportTypeFilter("Feedback")
-                          document.getElementById("typeDropdown").classList.add("hidden")
-                        }}
-                      >
-                        Feedback
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <Button variant="ghost" size="icon" className="h-10 w-10 bg-[#0f1424] border border-gray-700">
-                  <Filter size={18} />
-                </Button>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-800">
-                    <th className="text-left py-3 px-4 font-medium text-gray-400">Report Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-400">Type</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-400">Period</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-400">Generated</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-400">Format</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReports.length > 0 ? (
-                    filteredReports.map((report) => (
-                      <tr key={report.id} className="border-b border-gray-800">
-                        <td className="py-4 px-4">{report.name}</td>
-                        <td className="py-4 px-4">{report.type}</td>
-                        <td className="py-4 px-4">{report.period}</td>
-                        <td className="py-4 px-4">{report.generated}</td>
-                        <td className="py-4 px-4">{report.format}</td>
-                        <td className="py-4 px-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8"
-                            onClick={() => downloadReport(report)}
-                          >
-                            <Download size={16} className="mr-2" />
-                            Download
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="py-4 px-4 text-center text-gray-400">
-                        No reports found matching your search.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 glass-effect border-white/20 hover:border-blue-500/50"
+                          onClick={() => downloadReport(reportType.id, 'csv')}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          CSV
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 glass-effect border-white/20 hover:border-green-500/50"
+                          onClick={() => downloadReport(reportType.id, 'excel')}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Excel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -531,11 +322,17 @@ export default function Reports() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1a1f36] border-gray-700">
-                      <SelectItem value="Revenue">Revenue</SelectItem>
-                      <SelectItem value="Performance">Performance</SelectItem>
-                      <SelectItem value="Users">Users</SelectItem>
-                      <SelectItem value="Orders">Orders</SelectItem>
-                      <SelectItem value="Feedback">Feedback</SelectItem>
+                      {REPORT_TYPES.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          <div className="flex items-center gap-2">
+                            <type.icon className={`h-4 w-4 ${type.color}`} />
+                            <div>
+                              <div className="font-medium">{type.name}</div>
+                              <div className="text-xs text-gray-400">{type.description}</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -564,9 +361,8 @@ export default function Reports() {
                       <SelectValue placeholder="Select format" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1a1f36] border-gray-700">
-                      <SelectItem value="excel">Excel</SelectItem>
-                      <SelectItem value="pdf">PDF</SelectItem>
-                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                      <SelectItem value="csv">CSV (.csv)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

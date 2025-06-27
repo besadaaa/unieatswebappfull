@@ -1,6 +1,7 @@
 "use client"
 
 import { supabase } from '@/lib/supabase'
+import { InventoryManagementService } from '@/lib/inventory-management-service'
 import type { Order } from '@/lib/supabase'
 
 // Get orders from Supabase with related data
@@ -245,6 +246,9 @@ export async function createOrder(orderData: {
       await supabase.from('orders').delete().eq('id', order.id)
       return { success: false, message: itemsError.message }
     }
+
+    // Note: Inventory deduction is now handled automatically by database trigger
+    console.log('✅ Order created - inventory will be deducted automatically by database trigger')
 
     return { success: true, message: "Order created successfully", data: order }
   } catch (error) {

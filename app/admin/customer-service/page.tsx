@@ -382,11 +382,11 @@ export default function CustomerServicePage() {
       <div className="flex justify-end items-center mb-8 animate-slide-in-up">
         <div className="flex gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white/70" />
             <input
               type="text"
               placeholder="Search tickets..."
-              className="pl-8 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+              className="pl-8 h-9 rounded-md border border-white/20 bg-black/20 backdrop-blur-sm px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white placeholder:text-white/50"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -411,26 +411,26 @@ export default function CustomerServicePage() {
           </Button>
           <div className="relative">
             <select
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+              className="h-9 rounded-md border border-white/20 bg-black/20 backdrop-blur-sm px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all" className="bg-gray-800 text-white">All Statuses</option>
+              <option value="open" className="bg-gray-800 text-white">Open</option>
+              <option value="in_progress" className="bg-gray-800 text-white">In Progress</option>
+              <option value="resolved" className="bg-gray-800 text-white">Resolved</option>
+              <option value="closed" className="bg-gray-800 text-white">Closed</option>
             </select>
           </div>
           <div className="relative">
             <select
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+              className="h-9 rounded-md border border-white/20 bg-black/20 backdrop-blur-sm px-3 py-1 text-sm shadow-sm transition-all duration-300 hover:border-emerald-500/50 focus:border-emerald-500/50 text-white"
               value={userTypeFilter}
               onChange={(e) => setUserTypeFilter(e.target.value)}
             >
-              <option value="all">All Users</option>
-              <option value="cafeteria">Cafeteria Owners</option>
-              <option value="student">Students</option>
+              <option value="all" className="bg-gray-800 text-white">All Users</option>
+              <option value="cafeteria" className="bg-gray-800 text-white">Cafeteria Owners</option>
+              <option value="student" className="bg-gray-800 text-white">Students</option>
             </select>
           </div>
         </div>
@@ -439,9 +439,9 @@ export default function CustomerServicePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Tickets List */}
         <div className="md:col-span-1">
-          <Card>
+          <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
             <CardHeader>
-              <CardTitle>Support Tickets</CardTitle>
+              <CardTitle className="gradient-text">Support Tickets</CardTitle>
               <CardDescription>
                 {filteredMessages.length} ticket{filteredMessages.length !== 1 ? "s" : ""}
               </CardDescription>
@@ -461,9 +461,11 @@ export default function CustomerServicePage() {
                     .map((message) => (
                       <div
                         key={message.id}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedMessage?.id === message.id ? "bg-muted" : "hover:bg-muted/50"
-                        } ${message.isUnread ? "border-l-4 border-blue-500" : ""}`}
+                        className={`p-3 rounded-lg cursor-pointer transition-all duration-300 glass-effect border-white/10 hover-lift ${
+                          selectedMessage?.id === message.id
+                            ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20 border-purple-500/50"
+                            : "hover:bg-white/5 hover:border-purple-500/30"
+                        } ${message.isUnread ? "border-l-4 border-amber-500" : ""}`}
                         onClick={() => setSelectedMessage(message)}
                       >
                         <div className="flex justify-between items-start mb-1">
@@ -496,7 +498,7 @@ export default function CustomerServicePage() {
         {/* Selected Ticket */}
         <div className="md:col-span-2">
           {selectedMessage ? (
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardHeader className="flex flex-row items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -518,6 +520,7 @@ export default function CustomerServicePage() {
                   size="sm"
                   onClick={handleMarkResolved}
                   disabled={selectedMessage.status.raw === "resolved"}
+                  className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300"
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Mark as Resolved
@@ -543,7 +546,12 @@ export default function CustomerServicePage() {
 
                   {/* Responses */}
                   {(selectedMessage.responses || [])
-                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                    .sort((a, b) => {
+                      // Ensure consistent timezone handling
+                      const timeA = new Date(a.timestamp + (a.timestamp.includes('Z') ? '' : 'Z')).getTime()
+                      const timeB = new Date(b.timestamp + (b.timestamp.includes('Z') ? '' : 'Z')).getTime()
+                      return timeA - timeB
+                    })
                     .map((resp) => (
                     <div key={resp.id} className="flex gap-4">
                       {resp.isAdmin ? (
@@ -552,7 +560,13 @@ export default function CustomerServicePage() {
                             <div className="bg-primary text-primary-foreground p-4 rounded-lg ml-auto max-w-[80%]">
                               <p>{resp.content}</p>
                               <div className="text-xs text-primary-foreground/70 mt-1">
-                                {new Date(resp.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {resp.formattedTime || new Date(resp.timestamp).toLocaleString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour12: true
+                                })}
                               </div>
                             </div>
                           </div>
@@ -570,7 +584,13 @@ export default function CustomerServicePage() {
                             <div className="bg-muted p-4 rounded-lg max-w-[80%]">
                               <p>{resp.content}</p>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {new Date(resp.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {resp.formattedTime || new Date(resp.timestamp).toLocaleString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour12: true
+                                })}
                               </div>
                             </div>
                           </div>
@@ -581,14 +601,18 @@ export default function CustomerServicePage() {
 
                   {/* Response input */}
                   {selectedMessage.status.raw !== "resolved" && (
-                    <div className="pt-4 border-t">
+                    <div className="pt-4 border-t border-white/10">
                       <Textarea
                         placeholder="Type your response..."
-                        className="mb-2"
+                        className="mb-2 glass-effect border-white/20 bg-black/20 backdrop-blur-sm text-white placeholder:text-white/50 focus:border-emerald-500/50"
                         value={response}
                         onChange={(e) => setResponse(e.target.value)}
                       />
-                      <Button onClick={handleSendResponse} disabled={!response.trim()}>
+                      <Button
+                        onClick={handleSendResponse}
+                        disabled={!response.trim()}
+                        className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300"
+                      >
                         Send Response
                       </Button>
                     </div>
@@ -597,11 +621,11 @@ export default function CustomerServicePage() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Bell className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No ticket selected</h3>
-                <p className="text-muted-foreground text-center max-w-md">
+                <Bell className="h-12 w-12 text-amber-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2 gradient-text">No ticket selected</h3>
+                <p className="text-gray-300 text-center max-w-md">
                   Select a ticket from the list to view details and respond to the customer.
                 </p>
               </CardContent>

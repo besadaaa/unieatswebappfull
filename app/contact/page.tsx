@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Mail, MapPin, Phone, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import { Mail, MapPin, Phone, Instagram } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
@@ -219,9 +219,9 @@ export default function ContactPage() {
                         <div>
                           <h4 className="font-medium text-sm text-white mb-1">Email</h4>
                           <p className="text-xs text-slate-300">
-                            {systemSettings.support_email || "support@unieats.com"}
+                            unieats2025@gmail.com
                           </p>
-                          <p className="text-xs text-slate-300">info@unieats.com</p>
+                          <p className="text-xs text-slate-400">General inquiries & support</p>
                         </div>
                       </div>
                     </div>
@@ -234,9 +234,9 @@ export default function ContactPage() {
                         <div>
                           <h4 className="font-medium text-sm text-white mb-1">Phone</h4>
                           <p className="text-xs text-slate-300">
-                            {systemSettings.company_phone || "+20 123 456 7890"}
+                            01225958284
                           </p>
-                          <p className="text-xs text-slate-300">+20 098 765 4321</p>
+                          <p className="text-xs text-slate-400">Customer support</p>
                         </div>
                       </div>
                     </div>
@@ -268,51 +268,27 @@ export default function ContactPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-center space-x-2 mt-2">
-                    {systemSettings.social_facebook && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8 rounded-full p-0"
-                        onClick={() => window.open(systemSettings.social_facebook, '_blank')}
-                      >
-                        <Facebook size={16} />
-                        <span className="sr-only">Facebook</span>
-                      </Button>
-                    )}
-                    {systemSettings.social_twitter && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8 rounded-full p-0"
-                        onClick={() => window.open(systemSettings.social_twitter, '_blank')}
-                      >
-                        <Twitter size={16} />
-                        <span className="sr-only">Twitter</span>
-                      </Button>
-                    )}
-                    {systemSettings.social_instagram && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8 rounded-full p-0"
-                        onClick={() => window.open(systemSettings.social_instagram, '_blank')}
-                      >
-                        <Instagram size={16} />
-                        <span className="sr-only">Instagram</span>
-                      </Button>
-                    )}
-                    {systemSettings.social_linkedin && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8 rounded-full p-0"
-                        onClick={() => window.open(systemSettings.social_linkedin, '_blank')}
-                      >
-                        <Linkedin size={16} />
-                        <span className="sr-only">LinkedIn</span>
-                      </Button>
-                    )}
+                  <div className="flex justify-center space-x-3 mt-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="w-8 h-8 rounded-full p-0 hover:bg-pink-500/20 hover:border-pink-500/50"
+                      onClick={() => window.open('https://www.instagram.com/unieats0?igsh=cmFuYXJldzdxM2ti&utm_source=qr', '_blank')}
+                    >
+                      <Instagram size={16} />
+                      <span className="sr-only">Instagram</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="w-8 h-8 rounded-full p-0 hover:bg-black/20 hover:border-white/50"
+                      onClick={() => window.open('https://www.tiktok.com/@unieats0?_t=ZS-8xVWBnVTlJI&_r=1', '_blank')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                      </svg>
+                      <span className="sr-only">TikTok</span>
+                    </Button>
                   </div>
                 </div>
               </div>

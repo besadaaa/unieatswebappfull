@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuItems } from "@/app/actions/menu"
 import { getCurrentUser, getCafeterias } from "@/lib/supabase"
+import { getInventoryItems, type InventoryItem } from "@/app/actions/inventory"
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { formatCurrency } from "@/lib/currency"
@@ -71,6 +72,7 @@ interface MenuItem {
   }
   allergens: string[]
   ingredients: string[]
+  ingredientDetails: IngredientDetail[]
   ratings: {
     average: number
     count: number
@@ -78,6 +80,14 @@ interface MenuItem {
   createdAt: string
   updatedAt: string
   customizationOptions?: any[]
+}
+
+// New interface for ingredient details with quantities
+interface IngredientDetail {
+  inventoryItemId: string
+  name: string
+  quantity: number
+  unit: string
 }
 
 // Categories for menu items
@@ -132,6 +142,7 @@ const ensureItemProperties = (item: any): MenuItem => {
       fat: item.nutritionalInfo?.fat || 0,
     },
     ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+    ingredientDetails: Array.isArray(item.ingredientDetails) ? item.ingredientDetails : [],
     preparationTime: item.preparationTime || 15,
     ratings: {
       average: item.ratings?.average || item.rating || 0,
@@ -176,6 +187,7 @@ export default function MenuPage() {
       fat: 0,
     },
     ingredients: [] as string[],
+    ingredientDetails: [] as IngredientDetail[],
     preparationTime: 15,
     tags: [] as string[],
   })
@@ -195,6 +207,9 @@ export default function MenuPage() {
   const [isOffline, setIsOffline] = useState(false)
   const [cachedItems, setCachedItems] = useState<MenuItem[]>([])
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [selectedIngredients, setSelectedIngredients] = useState<IngredientDetail[]>([])
+  const [showIngredientSelector, setShowIngredientSelector] = useState(false)
 
   // Enhanced useEffect with offline detection and data persistence
   useEffect(() => {
@@ -212,6 +227,7 @@ export default function MenuPage() {
     window.addEventListener("offline", handleOnlineStatus)
 
     fetchMenuItems()
+    fetchInventoryItems()
 
     // Load cached items from localStorage
     const cached = localStorage.getItem("cachedMenuItems")
@@ -322,6 +338,24 @@ export default function MenuPage() {
     }
   }
 
+  // Load inventory items for ingredient selection
+  const fetchInventoryItems = async () => {
+    try {
+      const user = await getCurrentUser()
+      if (!user) return
+
+      const cafeterias = await getCafeterias()
+      const userCafeteria = cafeterias.find(c => c.owner_id === user.id) || cafeterias[0]
+
+      if (userCafeteria) {
+        const items = await getInventoryItems(userCafeteria.id)
+        setInventoryItems(items)
+      }
+    } catch (error) {
+      console.error("Failed to fetch inventory items:", error)
+    }
+  }
+
   // Enhanced fetch function with caching
   const fetchMenuItems = async () => {
     setIsLoading(true)
@@ -374,6 +408,7 @@ export default function MenuPage() {
           fat: 0,
         },
         ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+        ingredientDetails: Array.isArray(item.ingredient_details) ? item.ingredient_details : [],
         preparationTime: item.preparation_time || 15,
         customizationOptions: item.customization_options || [],
         createdAt: item.created_at,
@@ -588,6 +623,75 @@ export default function MenuPage() {
     }))
   }
 
+  // Add ingredient from inventory
+  const handleAddIngredientFromInventory = (inventoryItem: InventoryItem, quantity: number) => {
+    const newIngredient: IngredientDetail = {
+      inventoryItemId: inventoryItem.id,
+      name: inventoryItem.name,
+      quantity,
+      unit: inventoryItem.unit
+    }
+
+    setSelectedIngredients(prev => {
+      const existing = prev.find(ing => ing.inventoryItemId === inventoryItem.id)
+      let updatedIngredients
+      if (existing) {
+        updatedIngredients = prev.map(ing =>
+          ing.inventoryItemId === inventoryItem.id
+            ? { ...ing, quantity: ing.quantity + quantity }
+            : ing
+        )
+      } else {
+        updatedIngredients = [...prev, newIngredient]
+      }
+
+      // Update form data with the new ingredients
+      setFormData(prevForm => ({
+        ...prevForm,
+        ingredientDetails: updatedIngredients,
+        ingredients: updatedIngredients.map(ing => ing.name)
+      }))
+
+      return updatedIngredients
+    })
+  }
+
+  // Remove ingredient from selection
+  const handleRemoveIngredientDetail = (inventoryItemId: string) => {
+    setSelectedIngredients(prev => {
+      const updatedIngredients = prev.filter(ing => ing.inventoryItemId !== inventoryItemId)
+
+      // Update form data with the filtered ingredients
+      setFormData(prevForm => ({
+        ...prevForm,
+        ingredientDetails: updatedIngredients,
+        ingredients: updatedIngredients.map(ing => ing.name)
+      }))
+
+      return updatedIngredients
+    })
+  }
+
+  // Update ingredient quantity
+  const handleUpdateIngredientQuantity = (inventoryItemId: string, quantity: number) => {
+    setSelectedIngredients(prev => {
+      const updatedIngredients = prev.map(ing =>
+        ing.inventoryItemId === inventoryItemId
+          ? { ...ing, quantity }
+          : ing
+      )
+
+      // Update form data with the updated ingredients
+      setFormData(prevForm => ({
+        ...prevForm,
+        ingredientDetails: updatedIngredients,
+        ingredients: updatedIngredients.map(ing => ing.name)
+      }))
+
+      return updatedIngredients
+    })
+  }
+
   // Validate form data
   const validateForm = () => {
     const errors: Record<string, string> = {}
@@ -663,6 +767,7 @@ export default function MenuPage() {
         image_url: formData.image || null,
         nutrition_info: formData.nutritionalInfo,
         ingredients: formData.ingredients,
+        ingredient_details: formData.ingredientDetails, // New field for detailed ingredient info
         allergens: formData.allergens,
         customization_options: [], // Will be added later when customization is implemented
         preparation_time: formData.preparationTime,
@@ -727,9 +832,11 @@ export default function MenuPage() {
           fat: 0,
         },
         ingredients: [],
+        ingredientDetails: [],
         preparationTime: 15,
         tags: [],
       })
+      setSelectedIngredients([])
 
       setIsAddDialogOpen(false)
     } catch (error) {
@@ -750,6 +857,10 @@ export default function MenuPage() {
     const safeItem = ensureItemProperties(item)
     setCurrentItem(safeItem)
 
+    // Set the selected ingredients from the item's ingredient details
+    const itemIngredientDetails = safeItem.ingredientDetails || []
+    setSelectedIngredients([...itemIngredientDetails])
+
     setFormData({
       name: safeItem.name,
       description: safeItem.description,
@@ -760,8 +871,8 @@ export default function MenuPage() {
       allergens: [...safeItem.allergens],
       nutritionalInfo: { ...safeItem.nutritionalInfo },
       ingredients: [...safeItem.ingredients],
+      ingredientDetails: [...itemIngredientDetails],
       preparationTime: safeItem.preparationTime,
-
       tags: [...safeItem.tags],
     })
 
@@ -806,6 +917,7 @@ export default function MenuPage() {
         is_available: formData.available,
         nutrition_info: formData.nutritionalInfo,
         ingredients: formData.ingredients,
+        ingredient_details: formData.ingredientDetails, // New field for detailed ingredient info
         allergens: formData.allergens,
         customization_options: [], // Will be added when customization is implemented
         preparation_time: formData.preparationTime
@@ -1581,85 +1693,117 @@ export default function MenuPage() {
                     </div>
                   </TabsContent>
                   <TabsContent value="ingredients" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ingredients">Ingredients</Label>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="new-ingredient"
-                          value={newIngredient}
-                          onChange={(e) => setNewIngredient(e.target.value)}
-                          placeholder="Add ingredient"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault()
-                              handleAddIngredient()
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={handleAddIngredient} disabled={!newIngredient.trim()}>
-                          Add
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <Label>Ingredients from Inventory</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowIngredientSelector(!showIngredientSelector)}
+                        >
+                          {showIngredientSelector ? "Hide" : "Add"} Ingredients
                         </Button>
                       </div>
-                      <div className="mt-2">
-                        {formData.ingredients.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {formData.ingredients.map((ingredient, index) => (
-                              <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                                {ingredient}
-                                <button
-                                  type="button"
-                                  className="ml-1 rounded-full hover:bg-gray-200 p-1"
-                                  onClick={() => handleRemoveIngredient(index)}
-                                  aria-label={`Remove ${ingredient}`}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </Badge>
+
+                      {showIngredientSelector && (
+                        <div className="border border-gray-600 rounded-lg p-4 space-y-3 bg-gray-800">
+                          <Label className="text-sm font-medium text-gray-200">Select from Inventory:</Label>
+                          <div className="max-h-48 overflow-y-auto space-y-2">
+                            {inventoryItems.length > 0 ? (
+                              inventoryItems.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600 hover:border-orange-500 hover:bg-gray-650 transition-colors">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-white">{item.name}</div>
+                                    <div className="text-sm text-gray-300">
+                                      {item.quantity} {item.unit} available
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Input
+                                      type="number"
+                                      step="0.1"
+                                      min="0.1"
+                                      placeholder="Qty"
+                                      className="w-20 text-center bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-orange-500"
+                                      id={`qty-input-${item.id}`}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault()
+                                          const quantity = parseFloat((e.target as HTMLInputElement).value)
+                                          if (quantity > 0) {
+                                            handleAddIngredientFromInventory(item, quantity)
+                                            ;(e.target as HTMLInputElement).value = ""
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="bg-orange-600 hover:bg-orange-700 text-white border-0"
+                                      onClick={(e) => {
+                                        const input = document.getElementById(`qty-input-${item.id}`) as HTMLInputElement
+                                        const quantity = parseFloat(input.value)
+                                        if (quantity > 0) {
+                                          handleAddIngredientFromInventory(item, quantity)
+                                          input.value = ""
+                                        }
+                                      }}
+                                    >
+                                      Add
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-sm text-gray-400 text-center py-4">
+                                No inventory items available. Add items to your inventory first.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label className="text-gray-200">Selected Ingredients:</Label>
+                        {selectedIngredients.length > 0 ? (
+                          <div className="space-y-2">
+                            {selectedIngredients.map((ingredient) => (
+                              <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 bg-orange-900/20 rounded-lg border border-orange-500/30">
+                                <div className="flex-1">
+                                  <span className="font-medium text-white">{ingredient.name}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    min="0.1"
+                                    value={ingredient.quantity}
+                                    onChange={(e) => {
+                                      const newQuantity = parseFloat(e.target.value)
+                                      if (newQuantity > 0) {
+                                        handleUpdateIngredientQuantity(ingredient.inventoryItemId, newQuantity)
+                                      }
+                                    }}
+                                    className="w-20 bg-gray-600 border-gray-500 text-white text-center focus:border-orange-500"
+                                  />
+                                  <span className="text-sm text-gray-300 min-w-[3rem]">{ingredient.unit}</span>
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    className="bg-red-600 hover:bg-red-700 border-0"
+                                    onClick={() => handleRemoveIngredientDetail(ingredient.inventoryItemId)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No ingredients added yet</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="tags">Tags</Label>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="new-tag"
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          placeholder="Add tag"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault()
-                              handleAddTag()
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
-                          Add
-                        </Button>
-                      </div>
-                      <div className="mt-2">
-                        {formData.tags.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {formData.tags.map((tag, index) => (
-                              <Badge key={index} className="flex items-center gap-1">
-                                {tag}
-                                <button
-                                  type="button"
-                                  className="ml-1 rounded-full hover:bg-gray-200 p-1"
-                                  onClick={() => handleRemoveTag(index)}
-                                  aria-label={`Remove ${tag}`}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No tags added yet</p>
+                          <p className="text-sm text-gray-400">No ingredients selected yet</p>
                         )}
                       </div>
                     </div>
@@ -2294,86 +2438,117 @@ export default function MenuPage() {
                 </div>
               </TabsContent>
               <TabsContent value="ingredients" className="space-y-4">
-                {/* Same content as Add Dialog */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-ingredients">Ingredients</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="edit-new-ingredient"
-                      value={newIngredient}
-                      onChange={(e) => setNewIngredient(e.target.value)}
-                      placeholder="Add ingredient"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          handleAddIngredient()
-                        }
-                      }}
-                    />
-                    <Button type="button" onClick={handleAddIngredient} disabled={!newIngredient.trim()}>
-                      Add
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>Ingredients from Inventory</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowIngredientSelector(!showIngredientSelector)}
+                    >
+                      {showIngredientSelector ? "Hide" : "Add"} Ingredients
                     </Button>
                   </div>
-                  <div className="mt-2">
-                    {formData.ingredients.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {formData.ingredients.map((ingredient, index) => (
-                          <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                            {ingredient}
-                            <button
-                              type="button"
-                              className="ml-1 rounded-full hover:bg-gray-200 p-1"
-                              onClick={() => handleRemoveIngredient(index)}
-                              aria-label={`Remove ${ingredient}`}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </Badge>
+
+                  {showIngredientSelector && (
+                    <div className="border border-gray-600 rounded-lg p-4 space-y-3 bg-gray-800">
+                      <Label className="text-sm font-medium text-gray-200">Select from Inventory:</Label>
+                      <div className="max-h-48 overflow-y-auto space-y-2">
+                        {inventoryItems.length > 0 ? (
+                          inventoryItems.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600 hover:border-orange-500 hover:bg-gray-650 transition-colors">
+                              <div className="flex-1">
+                                <div className="font-medium text-white">{item.name}</div>
+                                <div className="text-sm text-gray-300">
+                                  {item.quantity} {item.unit} available
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  placeholder="Qty"
+                                  className="w-20 text-center bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-orange-500"
+                                  id={`edit-qty-input-${item.id}`}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault()
+                                      const quantity = parseFloat((e.target as HTMLInputElement).value)
+                                      if (quantity > 0) {
+                                        handleAddIngredientFromInventory(item, quantity)
+                                        ;(e.target as HTMLInputElement).value = ""
+                                      }
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="bg-orange-600 hover:bg-orange-700 text-white border-0"
+                                  onClick={(e) => {
+                                    const input = document.getElementById(`edit-qty-input-${item.id}`) as HTMLInputElement
+                                    const quantity = parseFloat(input.value)
+                                    if (quantity > 0) {
+                                      handleAddIngredientFromInventory(item, quantity)
+                                      input.value = ""
+                                    }
+                                  }}
+                                >
+                                  Add
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No inventory items available. Add items to your inventory first.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-200">Selected Ingredients:</Label>
+                    {selectedIngredients.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedIngredients.map((ingredient) => (
+                          <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 bg-orange-900/20 rounded-lg border border-orange-500/30">
+                            <div className="flex-1">
+                              <span className="font-medium text-white">{ingredient.name}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                value={ingredient.quantity}
+                                onChange={(e) => {
+                                  const newQuantity = parseFloat(e.target.value)
+                                  if (newQuantity > 0) {
+                                    handleUpdateIngredientQuantity(ingredient.inventoryItemId, newQuantity)
+                                  }
+                                }}
+                                className="w-20 bg-gray-600 border-gray-500 text-white text-center focus:border-orange-500"
+                              />
+                              <span className="text-sm text-gray-300 min-w-[3rem]">{ingredient.unit}</span>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="bg-red-600 hover:bg-red-700 border-0"
+                                onClick={() => handleRemoveIngredientDetail(ingredient.inventoryItemId)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No ingredients added yet</p>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tags">Tags</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="edit-new-tag"
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      placeholder="Add tag"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          handleAddTag()
-                        }
-                      }}
-                    />
-                    <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
-                      Add
-                    </Button>
-                  </div>
-                  <div className="mt-2">
-                    {formData.tags.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {formData.tags.map((tag, index) => (
-                          <Badge key={index} className="flex items-center gap-1">
-                            {tag}
-                            <button
-                              type="button"
-                              className="ml-1 rounded-full hover:bg-gray-200 p-1"
-                              onClick={() => handleRemoveTag(index)}
-                              aria-label={`Remove ${tag}`}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No tags added yet</p>
+                      <p className="text-sm text-gray-400">No ingredients selected yet</p>
                     )}
                   </div>
                 </div>

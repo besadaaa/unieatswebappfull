@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { DateRange } from "react-day-picker"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { ComparisonToggle } from "@/components/ui/comparison-toggle"
 import { ComparisonSummary } from "@/components/comparison-summary"
 import { ComparisonChart } from "@/components/comparison-chart"
@@ -134,6 +133,11 @@ export default function CafeteriaAnalyticsPage() {
           borderColor: [colors.primary]
         }
     }
+  }
+
+  // Handle predefined date range selection
+  const selectPredefinedRange = (range: DateRange) => {
+    setDateRange(range)
   }
 
   // Fetch analytics data from Supabase for the current cafeteria
@@ -447,9 +451,9 @@ export default function CafeteriaAnalyticsPage() {
     }
   }
 
-  // Initialize with last 30 days for better trend analysis
+  // Initialize with this month for better trend analysis
   useEffect(() => {
-    const initialRange = predefinedRanges.last30Days
+    const initialRange = predefinedRanges.thisMonth
     setDateRange(initialRange)
     fetchAnalyticsData(initialRange)
   }, [])
@@ -490,16 +494,92 @@ export default function CafeteriaAnalyticsPage() {
         subtitle="Comprehensive insights into your cafeteria's performance"
       />
 
-      <div className="flex justify-end items-center gap-4 animate-slide-in-up">
-        <div className="flex flex-col md:flex-row gap-4">
-          <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} className="w-full md:w-auto glass-effect border-white/20 hover:border-emerald-500/50 btn-modern" />
-          <div className="flex gap-3">
-            <Button variant="outline" size="icon" onClick={() => fetchAnalyticsData()} disabled={isLoading} className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern">
-              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-slide-in-up">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.today.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.today.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
+            size="sm"
+            onClick={() => selectPredefinedRange(predefinedRanges.today)}
+            className="glass-effect border-white/20 hover:border-yellow-500/50 btn-modern"
+          >
+            Today
+          </Button>
+          <Button
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.yesterday.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.yesterday.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
+            size="sm"
+            onClick={() => selectPredefinedRange(predefinedRanges.yesterday)}
+            className="glass-effect border-white/20 hover:border-yellow-500/50 btn-modern"
+          >
+            Yesterday
+          </Button>
+          <Button
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.last7Days.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.last7Days.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
+            size="sm"
+            onClick={() => selectPredefinedRange(predefinedRanges.last7Days)}
+            className="glass-effect border-white/20 hover:border-blue-500/50 btn-modern"
+          >
+            Last 7 Days
+          </Button>
+          <Button
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.thisMonth.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.thisMonth.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
+            size="sm"
+            onClick={() => selectPredefinedRange(predefinedRanges.thisMonth)}
+            className="glass-effect border-white/20 hover:border-green-500/50 btn-modern"
+          >
+            This Month
+          </Button>
+          <Button
+            variant={
+              dateRange &&
+              dateRange.from?.toDateString() === predefinedRanges.lastMonth.from.toDateString() &&
+              dateRange.to?.toDateString() === predefinedRanges.lastMonth.to.toDateString()
+                ? "secondary"
+                : "outline"
+            }
+            size="sm"
+            onClick={() => selectPredefinedRange(predefinedRanges.lastMonth)}
+            className="glass-effect border-white/20 hover:border-green-500/50 btn-modern"
+          >
+            Last Month
+          </Button>
+        </div>
+
+        <div className="flex gap-3">
+          <Button variant="outline" size="icon" onClick={() => fetchAnalyticsData()} disabled={isLoading} className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
         </div>
       </div>
+
+      {dateRange?.from && (
+        <div className="bg-muted/30 p-3 rounded-lg animate-slide-in-up">
+          <p className="text-sm font-medium">Current period: {getDateRangeDescription(dateRange)}</p>
+        </div>
+      )}
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
         <TabsList className="grid w-full grid-cols-4 glass-effect border border-white/20 p-1 h-auto rounded-xl">
@@ -604,12 +684,21 @@ export default function CafeteriaAnalyticsPage() {
                 </div>
               </>
             )}
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Fulfillment</CardTitle>
-                <CardDescription>Time to fulfill orders</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-left">
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30">
+                      <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold gradient-text">Order Fulfillment</h3>
+                      <p className="text-sm text-muted-foreground">Time to fulfill orders</p>
+                    </div>
+                  </div>
+                </div>
                 {isLoading || isInitialLoading ? (
                   <>
                     <div className="h-8 w-32 bg-muted rounded animate-pulse mb-2"></div>
@@ -617,18 +706,27 @@ export default function CafeteriaAnalyticsPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold">{orderFulfillmentTime} minutes</p>
+                    <p className="text-3xl font-bold gradient-text mb-1">{orderFulfillmentTime} minutes</p>
                     <p className="text-sm text-muted-foreground">Average fulfillment time</p>
                   </>
                 )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Completion Rate</CardTitle>
-                <CardDescription>Successfully completed orders</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-right">
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30">
+                      <svg className="h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold gradient-text">Order Completion Rate</h3>
+                      <p className="text-sm text-muted-foreground">Successfully completed orders</p>
+                    </div>
+                  </div>
+                </div>
                 {isLoading || isInitialLoading ? (
                   <>
                     <div className="h-8 w-24 bg-muted rounded animate-pulse mb-2"></div>
@@ -636,7 +734,7 @@ export default function CafeteriaAnalyticsPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold">{orderCompletionRate}%</p>
+                    <p className="text-3xl font-bold gradient-text mb-1">{orderCompletionRate}%</p>
                     <p className="text-sm text-muted-foreground">Successfully completed orders</p>
                   </>
                 )}
@@ -679,12 +777,21 @@ export default function CafeteriaAnalyticsPage() {
                 </div>
               </>
             )}
-            <Card>
-              <CardHeader>
-                <CardTitle>New Customers</CardTitle>
-                <CardDescription>First-time orders</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-left">
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30">
+                      <svg className="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold gradient-text">New Customers</h3>
+                      <p className="text-sm text-muted-foreground">First-time orders</p>
+                    </div>
+                  </div>
+                </div>
                 {isLoading || isInitialLoading ? (
                   <>
                     <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2"></div>
@@ -692,18 +799,27 @@ export default function CafeteriaAnalyticsPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold">{newCustomersCount}</p>
+                    <p className="text-3xl font-bold gradient-text mb-1">{newCustomersCount}</p>
                     <p className="text-sm text-muted-foreground">First-time customers in period</p>
                   </>
                 )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Returning Customers</CardTitle>
-                <CardDescription>Repeat order rate</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-right">
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30">
+                      <svg className="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold gradient-text">Returning Customers</h3>
+                      <p className="text-sm text-muted-foreground">Repeat order rate</p>
+                    </div>
+                  </div>
+                </div>
                 {isLoading || isInitialLoading ? (
                   <>
                     <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2"></div>
@@ -711,7 +827,7 @@ export default function CafeteriaAnalyticsPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold">{returningCustomersRate}%</p>
+                    <p className="text-3xl font-bold gradient-text mb-1">{returningCustomersRate}%</p>
                     <p className="text-sm text-muted-foreground">Repeat customer rate</p>
                   </>
                 )}
@@ -766,12 +882,21 @@ export default function CafeteriaAnalyticsPage() {
                 </div>
               </>
             )}
-            <Card>
-              <CardHeader>
-                <CardTitle>Menu Efficiency</CardTitle>
-                <CardDescription>Preparation time analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-teal-500/20 to-teal-600/20 border border-teal-500/30">
+                      <svg className="h-5 w-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold gradient-text">Menu Efficiency</h3>
+                      <p className="text-sm text-muted-foreground">Preparation time analysis</p>
+                    </div>
+                  </div>
+                </div>
                 {isLoading || isInitialLoading ? (
                   <>
                     <div className="h-8 w-32 bg-muted rounded animate-pulse mb-2"></div>
@@ -779,7 +904,7 @@ export default function CafeteriaAnalyticsPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold">{menuEfficiencyTime} minutes</p>
+                    <p className="text-3xl font-bold gradient-text mb-1">{menuEfficiencyTime} minutes</p>
                     <p className="text-sm text-muted-foreground">Average preparation time</p>
                   </>
                 )}

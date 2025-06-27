@@ -59,6 +59,12 @@ export interface MenuItem {
     sugar?: number
   }
   ingredients?: string[]
+  ingredient_details?: {
+    inventoryItemId: string
+    name: string
+    quantity: number
+    unit: string
+  }[]
   customization_options?: {
     name: string
     options: { name: string; price: number }[]
@@ -87,6 +93,9 @@ export interface Order {
   total_amount: number
   created_at: string
   updated_at: string
+  cancellation_reason?: string
+  cancelled_by?: string
+  cancelled_at?: string
   user?: User
   order_items?: OrderItem[]
 }
@@ -375,22 +384,27 @@ export const getSystemSetting = async (key: string): Promise<any> => {
 }
 
 export const getPublicSystemSettings = async (): Promise<Record<string, any>> => {
-  const { data, error } = await supabase
-    .from('system_settings')
-    .select('setting_key, setting_value')
-    .eq('is_public', true)
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('setting_key, setting_value')
+      .eq('is_public', true)
 
-  if (error) {
-    console.error('Error fetching public system settings:', error)
+    if (error) {
+      console.error('Error fetching public system settings:', error)
+      return {}
+    }
+
+    const settings: Record<string, any> = {}
+    data?.forEach(setting => {
+      settings[setting.setting_key] = setting.setting_value
+    })
+
+    return settings
+  } catch (error) {
+    console.error('Error in getPublicSystemSettings:', error)
     return {}
   }
-
-  const settings: Record<string, any> = {}
-  data?.forEach(setting => {
-    settings[setting.setting_key] = setting.setting_value
-  })
-
-  return settings
 }
 
 export const updateSystemSetting = async (key: string, value: any): Promise<boolean> => {

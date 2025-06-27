@@ -11,6 +11,9 @@ export interface OptimizedOrder {
   item_count: number
   items_summary: string
   cafeteria_id: string
+  cancellation_reason?: string
+  cancelled_by?: string
+  cancelled_at?: string
 }
 
 export interface OrderDetails extends OptimizedOrder {
@@ -76,7 +79,10 @@ export class OptimizedOrdersService {
           pickup_time,
           user_id,
           student_id,
-          cafeteria_id
+          cafeteria_id,
+          cancellation_reason,
+          cancelled_by,
+          cancelled_at
         `, { count: 'exact' })
         .eq('cafeteria_id', cafeteriaId)
         .order('created_at', { ascending: false })
@@ -114,24 +120,19 @@ export class OptimizedOrdersService {
             const result = await response.json()
             orderItemsData = result.orderItems || []
           } else {
-            console.error('Failed to fetch order items via API:', response.status)
             orderItemsData = []
           }
         } catch (error) {
-          console.error('Error fetching order items via API:', error)
           orderItemsData = []
         }
       }
 
       // Get customer names using API to bypass RLS issues
       const userIds = orders?.map(o => o.user_id || o.student_id).filter(Boolean) || []
-      console.log('User IDs to fetch profiles for:', userIds)
 
       let profilesData: any[] = []
       if (userIds.length > 0) {
         try {
-          console.log('🔥 Calling customer API for orders list with userIds:', userIds)
-
           const response = await fetch('/api/customers', {
             method: 'POST',
             headers: {
@@ -140,19 +141,12 @@ export class OptimizedOrdersService {
             body: JSON.stringify({ userIds })
           })
 
-          console.log('Customer API response status for orders list:', response.status)
-
           if (response.ok) {
             const result = await response.json()
-            console.log('Customer API response for orders list:', result)
 
             // Handle both old and new response formats
             profilesData = result.profiles || result || []
-            console.log('Profiles data fetched via API:', profilesData)
           } else {
-            const errorText = await response.text()
-            console.error('Failed to fetch profiles via API:', response.status, errorText)
-
             // Create fallback profiles
             profilesData = userIds.map(userId => ({
               id: userId,
@@ -162,8 +156,6 @@ export class OptimizedOrdersService {
             }))
           }
         } catch (error) {
-          console.error('Error fetching profiles via API:', error)
-
           // Create fallback profiles
           profilesData = userIds.map(userId => ({
             id: userId,
@@ -186,9 +178,7 @@ export class OptimizedOrdersService {
         // Find customer name from separately fetched profiles
         const customerId = order.user_id || order.student_id
         const customerProfile = profilesData?.find(profile => profile.id === customerId)
-        const customerName = customerProfile?.full_name || customerProfile?.email || `User ${customerId?.slice(0, 8)}` || 'Unknown Customer'
-
-        console.log(`Order ${order.id}: customerId=${customerId}, profile found=${!!customerProfile}, name=${customerName}`)
+        const customerName = customerProfile?.full_name || customerProfile?.email || (customerId ? `User ${customerId.slice(0, 8)}` : 'Unknown Customer')
 
         // Check if any order items have notes (using selected_variant field)
         const hasNotes = orderItems.some(item =>
@@ -206,7 +196,10 @@ export class OptimizedOrdersService {
           item_count: itemCount,
           items_summary: itemsSummary,
           cafeteria_id: cafeteriaId,
-          has_notes: hasNotes
+          has_notes: hasNotes,
+          cancellation_reason: order.cancellation_reason,
+          cancelled_by: order.cancelled_by,
+          cancelled_at: order.cancelled_at
         }
       })
 
@@ -226,6 +219,9 @@ export class OptimizedOrdersService {
   static async getOrderDetails(orderId: string): Promise<OrderDetails | null> {
     try {
       const cacheKey = `order_details_${orderId}`
+      // Clear cache to get fresh cancellation data
+      this.cache.delete(cacheKey)
+
       const cached = this.getCachedData(cacheKey)
       if (cached) {
         console.log('Returning cached order details')
@@ -242,8 +238,6 @@ export class OptimizedOrdersService {
         .single()
 
       if (error) {
-        console.error('Error fetching order:', error)
-        console.error('Error details:', JSON.stringify(error, null, 2))
         return null
       }
 
@@ -251,25 +245,19 @@ export class OptimizedOrdersService {
       let orderItems: any[] = []
 
       try {
-        console.log('Fetching order items for order:', orderId)
-
         const response = await fetch(`/api/order-items?orderId=${orderId}`)
 
         if (response.ok) {
           const result = await response.json()
           orderItems = result.orderItems || []
-          console.log('Order items fetched via API:', orderItems.length)
         } else {
-          console.error('Failed to fetch order items via API:', response.status)
           orderItems = []
         }
       } catch (error) {
-        console.error('Error fetching order items via API:', error)
         orderItems = []
       }
 
       if (!order) {
-        console.error('No order data returned for ID:', orderId)
         return null
       }
 
@@ -278,10 +266,7 @@ export class OptimizedOrdersService {
       const customerId = order.user_id || order.student_id
 
       if (customerId) {
-        console.log('Fetching profile for customer ID:', customerId)
         try {
-          console.log('🔥 Calling customer API for order details with customerId:', customerId)
-
           const response = await fetch('/api/customers', {
             method: 'POST',
             headers: {
@@ -290,11 +275,8 @@ export class OptimizedOrdersService {
             body: JSON.stringify({ userIds: [customerId] })
           })
 
-          console.log('Customer API response status for order details:', response.status)
-
           if (response.ok) {
             const result = await response.json()
-            console.log('Customer API response for order details:', result)
 
             // Handle both old and new response formats
             const profiles = result.profiles || result || []
@@ -306,19 +288,14 @@ export class OptimizedOrdersService {
                 email: profile.email || null,
                 phone: profile.phone || null
               }
-              console.log('Customer profile found via API for order details:', profile)
             } else {
-              console.log('No profile found for customer ID:', customerId)
               // Fallback to partial customer ID if no profile
               customerDetails.full_name = `User ${customerId.slice(0, 8)}`
             }
           } else {
-            const errorText = await response.text()
-            console.error('Failed to fetch customer profile via API:', response.status, errorText)
             customerDetails.full_name = `User ${customerId.slice(0, 8)}`
           }
         } catch (error) {
-          console.error('Error fetching customer profile via API for order details:', error)
           customerDetails.full_name = `User ${customerId.slice(0, 8)}`
         }
       }
@@ -342,6 +319,10 @@ export class OptimizedOrdersService {
         ).join(', ') || '',
         cafeteria_id: order.cafeteria_id,
         has_notes: hasNotes,
+        // Add cancellation fields that were missing
+        cancellation_reason: order.cancellation_reason,
+        cancelled_by: order.cancelled_by,
+        cancelled_at: order.cancelled_at,
         order_items: orderItems?.map((item: any) => ({
           id: item.id || 'unknown',
           menu_item_id: item.item_id || 'unknown',

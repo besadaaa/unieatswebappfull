@@ -7,9 +7,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
-import { RefreshCw } from "lucide-react"
+import { OptimizedOrdersService } from "@/lib/optimized-orders-service"
+import { RefreshCw, Eye, Clock } from "lucide-react"
 import Image from "next/image"
 import { PageHeader } from "@/components/admin/page-header"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 
 interface OrderData {
   id: string
@@ -71,7 +80,51 @@ export default function OrderInsights() {
     completed: 0,
     canceled: 0
   })
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<OrderData | null>(null)
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null)
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false)
   const { toast } = useToast()
+
+  // Handle viewing order details - using the same approach as cafeteria interface
+  const handleViewOrder = async (order: OrderData) => {
+    setSelectedOrder(order)
+    setViewDialogOpen(true)
+    setLoadingOrderDetails(true)
+
+    try {
+      console.log('🔍 Fetching order details using OptimizedOrdersService for:', order.id)
+
+      // Use the same service that works for cafeteria interface
+      const orderDetails = await OptimizedOrdersService.getOrderDetails(order.id)
+
+      if (orderDetails) {
+        console.log('📦 Order details received:', orderDetails)
+        setSelectedOrderDetails(orderDetails)
+
+        toast({
+          title: "Order Details Loaded",
+          description: `Successfully loaded details for order ${order.id}`,
+        })
+      } else {
+        throw new Error('Order details not found')
+      }
+    } catch (error) {
+      console.error('💥 Error in handleViewOrder:', error)
+      toast({
+        title: "Error",
+        description: `Failed to load order details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingOrderDetails(false)
+    }
+  }
+
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString()
+  }
 
   // Load orders from API
   const loadOrders = async () => {
@@ -79,10 +132,14 @@ export default function OrderInsights() {
       setLoading(true)
 
       // Fetch orders from our API endpoint
+      console.log('🔄 Fetching orders from API...')
       const response = await fetch('/api/orders?status=all&limit=100')
       const data = await response.json()
 
+      console.log('📡 API Response:', { status: response.status, data })
+
       if (!response.ok) {
+        console.error('❌ API Error:', data)
         throw new Error(data.error || 'Failed to fetch orders')
       }
 
@@ -238,6 +295,7 @@ export default function OrderInsights() {
                     <th className="text-left py-3 px-4 font-medium text-gray-400">Total</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-400">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-400">Time</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -268,6 +326,16 @@ export default function OrderInsights() {
                         </span>
                       </td>
                       <td className="py-4 px-4">{order.time}</td>
+                      <td className="py-4 px-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewOrder(order)}
+                          className="hover:bg-blue-500/20"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -275,6 +343,163 @@ export default function OrderInsights() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Order Details Dialog */}
+        <Dialog open={viewDialogOpen} onOpenChange={(open) => {
+          setViewDialogOpen(open)
+          if (!open) {
+            setSelectedOrderDetails(null)
+          }
+        }}>
+          <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+            <DialogHeader>
+              <DialogTitle>Order Details</DialogTitle>
+              <DialogDescription>
+                {selectedOrder && `Order ${selectedOrder.id} placed by ${selectedOrder.customer.name}`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {loadingOrderDetails ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                <span>Loading order details...</span>
+              </div>
+            ) : selectedOrderDetails ? (
+              <div className="space-y-6 p-2">
+                {/* Order Status and Time */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Status</p>
+                    <Badge
+                      className={`${
+                        selectedOrderDetails.status === "new"
+                          ? "bg-blue-500 hover:bg-blue-600"
+                          : selectedOrderDetails.status === "preparing"
+                            ? "bg-yellow-500 hover:bg-yellow-600"
+                            : selectedOrderDetails.status === "ready"
+                              ? "bg-green-500 hover:bg-green-600"
+                              : selectedOrderDetails.status === "completed"
+                                ? "bg-gray-500 hover:bg-gray-600"
+                                : "bg-red-500 hover:bg-red-600"
+                      } text-white font-medium px-3 py-1`}
+                    >
+                      {selectedOrderDetails.status.charAt(0).toUpperCase() + selectedOrderDetails.status.slice(1)}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Time Placed</p>
+                    <p className="text-sm font-medium">{formatDate(selectedOrderDetails.created_at)}</p>
+                  </div>
+                </div>
+
+                {/* Pickup Time and Total */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Pickup Time</p>
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4 text-blue-500" />
+                      <span className="font-medium text-blue-600">
+                        {selectedOrderDetails.pickup_time ? formatDate(selectedOrderDetails.pickup_time) : 'ASAP'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total</p>
+                    <p className="text-lg font-bold text-emerald-600">{selectedOrderDetails.total_amount?.toFixed(2)} EGP</p>
+                  </div>
+                </div>
+
+                {/* Customer Information */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">Customer</p>
+                  <div className="space-y-1">
+                    <p className="font-medium text-base">{selectedOrderDetails.customer_details?.full_name || selectedOrder?.customer.name}</p>
+                    {selectedOrderDetails.customer_details?.email && (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{selectedOrderDetails.customer_details.email}</p>
+                    )}
+                    {selectedOrderDetails.customer_details?.phone && (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{selectedOrderDetails.customer_details.phone}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">Order Items</p>
+                  <div className="space-y-3">
+                    {selectedOrderDetails.order_items && selectedOrderDetails.order_items.length > 0 ? (
+                      selectedOrderDetails.order_items.map((item: any, index: number) => (
+                        <div key={index} className="p-3 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-base">{item.quantity}x {item.menu_item_name}</span>
+                              </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                @ {item.price?.toFixed(2)} EGP each
+                              </div>
+                              {item.notes && (
+                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-4 border-blue-400">
+                                  <div className="flex items-start gap-2">
+                                    <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <div>
+                                      <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Special Instructions:</p>
+                                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{item.notes}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right ml-4">
+                              <span className="font-bold text-lg text-emerald-600">{item.total?.toFixed(2)} EGP</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-slate-500">No items available</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cancellation Information */}
+                {selectedOrderDetails.status === "cancelled" && (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <h4 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-3">Cancellation Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancelled By</p>
+                        <p className="text-sm font-semibold capitalize text-red-800 dark:text-red-300">
+                          {selectedOrderDetails.cancelled_by || "Unknown"}
+                        </p>
+                      </div>
+                      {selectedOrderDetails.cancelled_at && (
+                        <div>
+                          <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancelled At</p>
+                          <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+                            {new Date(selectedOrderDetails.cancelled_at).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancellation Reason</p>
+                      <p className="text-sm text-red-800 dark:text-red-300 bg-red-100 dark:bg-red-900/40 p-2 rounded border">
+                        {selectedOrderDetails.cancellation_reason || "No reason provided"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : selectedOrder ? (
+              <div className="text-center py-8 text-slate-500">
+                Failed to load order details
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
     </div>
   )
 }

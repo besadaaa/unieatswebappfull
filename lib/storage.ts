@@ -141,3 +141,21 @@ export async function uploadUserAvatar(
 
   return uploadFile(file, 'profile-photos', filePath)
 }
+
+/**
+ * Upload cafeteria avatar
+ * @param file - The image file to upload
+ * @param userId - The user ID (cafeteria owner)
+ * @returns Promise with upload result
+ */
+export async function uploadCafeteriaAvatar(
+  file: File,
+  userId: string
+): Promise<UploadResult> {
+  const timestamp = Date.now()
+  const fileExt = file.name.split('.').pop()
+  const fileName = `cafeteria_${userId}_${timestamp}.${fileExt}`
+  const filePath = `cafeterias/${fileName}`
+
+  return uploadFile(file, 'profile-photos', filePath)
+}

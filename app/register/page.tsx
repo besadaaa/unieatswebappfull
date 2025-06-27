@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Eye, EyeOff, Coffee, MapPin, FileText } from "lucide-react"
 import { useState } from "react"
 import { toast } from "@/components/ui/use-toast"
@@ -160,6 +162,38 @@ export default function RegisterPage() {
 
       <main className="w-full px-4 py-4 flex-1 flex flex-col relative z-10 animate-fade-in">
         <h2 className="text-3xl font-bold mb-6 text-center gradient-text animate-shimmer">Register Your Cafeteria</h2>
+
+        {/* Document Requirements Notice */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <Card className="modern-card glass-effect border border-amber-500/30 bg-amber-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FileText className="h-3 w-3 text-amber-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-bold text-amber-400 text-sm">Required Documents for Cafeteria Registration</h3>
+                  <p className="text-xs text-slate-300">
+                    After completing this registration, please send the following documents to{" "}
+                    <a href="mailto:unieats2025@gmail.com" className="text-amber-400 hover:text-amber-300 underline">
+                      unieats2025@gmail.com
+                    </a>
+                    :
+                  </p>
+                  <ul className="text-xs text-slate-300 space-y-1 ml-4">
+                    <li>• A copy of your commercial registration (السجل التجاري)</li>
+                    <li>• A copy of your tax card (البطاقة الضريبية)</li>
+                    <li>• Food safety or health clearance (إن وجد)</li>
+                    <li>• Owner's or legal representative's ID copy</li>
+                  </ul>
+                  <p className="text-xs text-slate-400 italic">
+                    Please ensure all documents are valid and clearly scanned.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="flex-1 flex items-center justify-center">
           <Card className="w-full max-w-4xl modern-card glass-effect hover-lift relative">
@@ -333,19 +367,217 @@ export default function RegisterPage() {
                     </label>
                     <p className="text-xs text-slate-400">
                       By creating an account, you agree to our{" "}
-                      <a
-                        href="#"
-                        className="text-amber-400 hover:text-amber-300 hover:underline transition-colors duration-300"
-                      >
-                        Terms of Service
-                      </a>{" "}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button className="text-amber-400 hover:text-amber-300 hover:underline transition-colors duration-300">
+                            Terms of Service
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle>Terms of Service</DialogTitle>
+                            <DialogDescription>
+                              Please read our terms of service carefully.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <ScrollArea className="h-[60vh] pr-4">
+                            <div className="space-y-4 text-sm">
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">1. Acceptance of Terms</h3>
+                                <p>
+                                  By accessing and using UniEats, you accept and agree to be bound by the terms and provision of this agreement.
+                                  If you do not agree to abide by the above, please do not use this service.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">2. Service Description</h3>
+                                <p>
+                                  UniEats is a food ordering platform that connects university students with campus cafeterias.
+                                  We provide a convenient way to browse menus, place orders, and manage food delivery within university premises.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">3. User Accounts</h3>
+                                <p>
+                                  To use our service, you must create an account with accurate information. You are responsible for maintaining
+                                  the confidentiality of your account credentials and for all activities that occur under your account.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">4. Orders and Payments</h3>
+                                <p>
+                                  All orders placed through UniEats are subject to acceptance by the respective cafeteria.
+                                  Payment must be completed at the time of order placement. We accept various payment methods including
+                                  credit cards, debit cards, and digital wallets.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">5. Cancellation and Refunds</h3>
+                                <p>
+                                  Orders may be cancelled within 5 minutes of placement. Refunds will be processed according to our refund policy.
+                                  In case of order issues, please contact our support team for assistance.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">6. User Conduct</h3>
+                                <p>
+                                  Users must not use the platform for any unlawful purposes or in any way that could damage, disable,
+                                  or impair the service. Harassment of cafeteria staff or other users is strictly prohibited.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">7. Intellectual Property</h3>
+                                <p>
+                                  All content on UniEats, including logos, text, images, and software, is the property of UniEats or its licensors
+                                  and is protected by copyright and other intellectual property laws.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">8. Limitation of Liability</h3>
+                                <p>
+                                  UniEats shall not be liable for any indirect, incidental, special, or consequential damages arising from
+                                  the use of our service. Our liability is limited to the amount paid for the specific order in question.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">9. Changes to Terms</h3>
+                                <p>
+                                  We reserve the right to modify these terms at any time. Users will be notified of significant changes,
+                                  and continued use of the service constitutes acceptance of the modified terms.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">10. Contact Information</h3>
+                                <p>
+                                  For questions about these Terms of Service, please contact us at:
+                                  <br />
+                                  Email: unieats2025@gmail.com
+                                  <br />
+                                  Phone: 01225958284
+                                </p>
+                              </section>
+                            </div>
+                          </ScrollArea>
+                        </DialogContent>
+                      </Dialog>{" "}
                       and{" "}
-                      <a
-                        href="#"
-                        className="text-amber-400 hover:text-amber-300 hover:underline transition-colors duration-300"
-                      >
-                        Privacy Policy
-                      </a>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button className="text-amber-400 hover:text-amber-300 hover:underline transition-colors duration-300">
+                            Privacy Policy
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle>Privacy Policy</DialogTitle>
+                            <DialogDescription>
+                              Learn how we collect, use, and protect your personal information.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <ScrollArea className="h-[60vh] pr-4">
+                            <div className="space-y-4 text-sm">
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">1. Information We Collect</h3>
+                                <p>
+                                  We collect information you provide directly to us, such as when you create an account, place an order,
+                                  or contact us for support. This includes your name, email address, phone number, payment information,
+                                  and order history.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">2. How We Use Your Information</h3>
+                                <p>
+                                  We use your information to provide and improve our services, process orders, communicate with you,
+                                  and ensure the security of our platform. We may also use your information for analytics and
+                                  to personalize your experience.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">3. Information Sharing</h3>
+                                <p>
+                                  We do not sell, trade, or rent your personal information to third parties. We may share your information
+                                  with cafeteria partners to fulfill orders, with service providers who assist us in operating our platform,
+                                  and as required by law.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">4. Data Security</h3>
+                                <p>
+                                  We implement appropriate security measures to protect your personal information against unauthorized access,
+                                  alteration, disclosure, or destruction. However, no method of transmission over the internet is 100% secure.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">5. Cookies and Tracking</h3>
+                                <p>
+                                  We use cookies and similar technologies to enhance your experience, analyze usage patterns,
+                                  and provide personalized content. You can control cookie settings through your browser preferences.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">6. Your Rights</h3>
+                                <p>
+                                  You have the right to access, update, or delete your personal information. You may also opt out of
+                                  certain communications from us. To exercise these rights, please contact us using the information below.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">7. Data Retention</h3>
+                                <p>
+                                  We retain your personal information for as long as necessary to provide our services and comply with
+                                  legal obligations. Order history and account information may be retained for up to 7 years for
+                                  business and legal purposes.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">8. Children's Privacy</h3>
+                                <p>
+                                  Our service is intended for university students who are typically 18 years or older.
+                                  We do not knowingly collect personal information from children under 13.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">9. Changes to Privacy Policy</h3>
+                                <p>
+                                  We may update this Privacy Policy from time to time. We will notify you of any material changes
+                                  by posting the new policy on our platform and updating the effective date.
+                                </p>
+                              </section>
+
+                              <section>
+                                <h3 className="font-semibold text-lg mb-2">10. Contact Us</h3>
+                                <p>
+                                  If you have any questions about this Privacy Policy, please contact us at:
+                                  <br />
+                                  Email: unieats2025@gmail.com
+                                  <br />
+                                  Phone: 01225958284
+                                  <br />
+                                  <br />
+                                  UniEats Team: Besada Zekry, Youssef Gomaa, Aya Awad, Mahmoud Mamesh, Ahmed Alaa, Mohamed Nasser, Abdullah Ahmed
+                                </p>
+                              </section>
+                            </div>
+                          </ScrollArea>
+                        </DialogContent>
+                      </Dialog>
                       .
                     </p>
                   </div>

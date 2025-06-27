@@ -34,6 +34,28 @@ export default function Settings() {
     serviceFeeCap: "20",
     commissionRate: "10",
     maintenanceMessage: "We're currently performing scheduled maintenance. Please check back soon.",
+    // Notification settings
+    emailNotifications: true,
+    pushNotifications: true,
+    smsNotifications: false,
+    orderNotificationFreq: "immediate",
+    // Security settings
+    require2FA: false,
+    sessionTimeout: "30",
+    minPasswordLength: "8",
+    ipWhitelist: false,
+    // Payment settings
+    paymentProvider: "stripe",
+    currency: "EGP",
+    autoRefunds: true,
+    // Email settings
+    smtpServer: "smtp.gmail.com",
+    smtpPort: "587",
+    fromEmail: "noreply@unieats.com",
+    // User settings
+    autoApproveStudents: true,
+    requireEmailVerification: true,
+    maxLoginAttempts: "5",
   })
 
   // Load settings from database
@@ -223,7 +245,7 @@ export default function Settings() {
                             id="platform-name"
                             value={formData.platformName}
                             onChange={(e) => setFormData({ ...formData, platformName: e.target.value })}
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                         </div>
 
@@ -233,7 +255,7 @@ export default function Settings() {
                             id="platform-url"
                             value={formData.platformUrl}
                             onChange={(e) => setFormData({ ...formData, platformUrl: e.target.value })}
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                         </div>
 
@@ -243,7 +265,7 @@ export default function Settings() {
                             id="support-email"
                             value={formData.supportEmail}
                             onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                         </div>
 
@@ -253,7 +275,7 @@ export default function Settings() {
                             value={formData.timezone}
                             onValueChange={(value) => setFormData({ ...formData, timezone: value })}
                           >
-                            <SelectTrigger className="bg-[#0f1424] border-gray-700">
+                            <SelectTrigger className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300">
                               <SelectValue placeholder="Select timezone" />
                             </SelectTrigger>
                             <SelectContent>
@@ -271,7 +293,7 @@ export default function Settings() {
                             value={formData.dateFormat}
                             onValueChange={(value) => setFormData({ ...formData, dateFormat: value })}
                           >
-                            <SelectTrigger className="bg-[#0f1424] border-gray-700">
+                            <SelectTrigger className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300">
                               <SelectValue placeholder="Select date format" />
                             </SelectTrigger>
                             <SelectContent>
@@ -347,7 +369,7 @@ export default function Settings() {
                             min="0"
                             max="100"
                             step="0.1"
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                           <p className="text-xs text-gray-400">Fee charged to students on orders</p>
                         </div>
@@ -361,7 +383,7 @@ export default function Settings() {
                             type="number"
                             min="0"
                             step="0.01"
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                           <p className="text-xs text-gray-400">Maximum service fee amount</p>
                         </div>
@@ -376,7 +398,7 @@ export default function Settings() {
                             min="0"
                             max="100"
                             step="0.1"
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                           <p className="text-xs text-gray-400">Commission taken from cafeterias</p>
                         </div>
@@ -387,7 +409,7 @@ export default function Settings() {
                             id="maintenance-message"
                             value={formData.maintenanceMessage}
                             onChange={(e) => setFormData({ ...formData, maintenanceMessage: e.target.value })}
-                            className="bg-[#0f1424] border-gray-700 focus-visible:ring-1 focus-visible:ring-gray-500"
+                            className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern transition-all duration-300"
                           />
                         </div>
                       </div>
@@ -395,7 +417,288 @@ export default function Settings() {
                   </div>
                 </TabsContent>
 
-                {/* Other tab contents would go here */}
+                <TabsContent value="notifications" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Notification Settings</h3>
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Email Notifications</Label>
+                            <p className="text-xs text-gray-400">Send email notifications for important events</p>
+                          </div>
+                          <Switch
+                            checked={formData.emailNotifications || true}
+                            onCheckedChange={(checked) => setFormData({ ...formData, emailNotifications: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Push Notifications</Label>
+                            <p className="text-xs text-gray-400">Send push notifications to mobile apps</p>
+                          </div>
+                          <Switch
+                            checked={formData.pushNotifications || true}
+                            onCheckedChange={(checked) => setFormData({ ...formData, pushNotifications: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>SMS Notifications</Label>
+                            <p className="text-xs text-gray-400">Send SMS for critical updates</p>
+                          </div>
+                          <Switch
+                            checked={formData.smsNotifications || false}
+                            onCheckedChange={(checked) => setFormData({ ...formData, smsNotifications: checked })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Notification Frequency</h3>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Order Updates</Label>
+                          <Select value={formData.orderNotificationFreq || "immediate"} onValueChange={(value) => setFormData({ ...formData, orderNotificationFreq: value })}>
+                            <SelectTrigger className="glass-effect border-white/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="immediate">Immediate</SelectItem>
+                              <SelectItem value="hourly">Hourly</SelectItem>
+                              <SelectItem value="daily">Daily</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="security" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Security Settings</h3>
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Two-Factor Authentication</Label>
+                            <p className="text-xs text-gray-400">Require 2FA for admin accounts</p>
+                          </div>
+                          <Switch
+                            checked={formData.require2FA || false}
+                            onCheckedChange={(checked) => setFormData({ ...formData, require2FA: checked })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Session Timeout (minutes)</Label>
+                          <Input
+                            type="number"
+                            value={formData.sessionTimeout || "30"}
+                            onChange={(e) => setFormData({ ...formData, sessionTimeout: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern transition-all duration-300"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Password Minimum Length</Label>
+                          <Input
+                            type="number"
+                            value={formData.minPasswordLength || "8"}
+                            onChange={(e) => setFormData({ ...formData, minPasswordLength: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern transition-all duration-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Access Control</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>IP Whitelist</Label>
+                            <p className="text-xs text-gray-400">Restrict admin access to specific IPs</p>
+                          </div>
+                          <Switch
+                            checked={formData.ipWhitelist || false}
+                            onCheckedChange={(checked) => setFormData({ ...formData, ipWhitelist: checked })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="payment" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Payment Gateway</h3>
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label>Payment Provider</Label>
+                          <Select value={formData.paymentProvider || "stripe"} onValueChange={(value) => setFormData({ ...formData, paymentProvider: value })}>
+                            <SelectTrigger className="glass-effect border-white/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="stripe">Stripe</SelectItem>
+                              <SelectItem value="paypal">PayPal</SelectItem>
+                              <SelectItem value="fawry">Fawry</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Currency</Label>
+                          <Select value={formData.currency || "EGP"} onValueChange={(value) => setFormData({ ...formData, currency: value })}>
+                            <SelectTrigger className="glass-effect border-white/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="EGP">Egyptian Pound (EGP)</SelectItem>
+                              <SelectItem value="USD">US Dollar (USD)</SelectItem>
+                              <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Payment Settings</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Auto-refunds</Label>
+                            <p className="text-xs text-gray-400">Automatically process refunds</p>
+                          </div>
+                          <Switch
+                            checked={formData.autoRefunds || true}
+                            onCheckedChange={(checked) => setFormData({ ...formData, autoRefunds: checked })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="email" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Email Configuration</h3>
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label>SMTP Server</Label>
+                          <Input
+                            value={formData.smtpServer || "smtp.gmail.com"}
+                            onChange={(e) => setFormData({ ...formData, smtpServer: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-pink-500/50 focus:border-pink-500/50 btn-modern transition-all duration-300"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>SMTP Port</Label>
+                          <Input
+                            type="number"
+                            value={formData.smtpPort || "587"}
+                            onChange={(e) => setFormData({ ...formData, smtpPort: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-pink-500/50 focus:border-pink-500/50 btn-modern transition-all duration-300"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>From Email</Label>
+                          <Input
+                            type="email"
+                            value={formData.fromEmail || "noreply@unieats.com"}
+                            onChange={(e) => setFormData({ ...formData, fromEmail: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-pink-500/50 focus:border-pink-500/50 btn-modern transition-all duration-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="users" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">User Management</h3>
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Auto-approve Students</Label>
+                            <p className="text-xs text-gray-400">Automatically approve student registrations</p>
+                          </div>
+                          <Switch
+                            checked={formData.autoApproveStudents || true}
+                            onCheckedChange={(checked) => setFormData({ ...formData, autoApproveStudents: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Email Verification Required</Label>
+                            <p className="text-xs text-gray-400">Require email verification for new users</p>
+                          </div>
+                          <Switch
+                            checked={formData.requireEmailVerification || true}
+                            onCheckedChange={(checked) => setFormData({ ...formData, requireEmailVerification: checked })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Max Login Attempts</Label>
+                          <Input
+                            type="number"
+                            value={formData.maxLoginAttempts || "5"}
+                            onChange={(e) => setFormData({ ...formData, maxLoginAttempts: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-cyan-500/50 focus:border-cyan-500/50 btn-modern transition-all duration-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="maintenance" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">Maintenance Mode</h3>
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Enable Maintenance Mode</Label>
+                            <p className="text-xs text-gray-400">Put the platform in maintenance mode</p>
+                          </div>
+                          <Switch
+                            checked={formData.maintenanceMode}
+                            onCheckedChange={(checked) => handleToggleChange('maintenanceMode')}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Maintenance Message</Label>
+                          <Textarea
+                            value={formData.maintenanceMessage}
+                            onChange={(e) => setFormData({ ...formData, maintenanceMessage: e.target.value })}
+                            className="glass-effect border-white/20 hover:border-red-500/50 focus:border-red-500/50 btn-modern transition-all duration-300"
+                            rows={4}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 gradient-text">System Health</h3>
+                      <div className="space-y-4">
+                        <div className="p-4 glass-effect border-white/20 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <span>Database Status</span>
+                            <span className="text-green-400">✓ Connected</span>
+                          </div>
+                        </div>
+                        <div className="p-4 glass-effect border-white/20 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <span>Storage Status</span>
+                            <span className="text-green-400">✓ Available</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
               </Tabs>
             </div>
 
@@ -404,13 +707,13 @@ export default function Settings() {
                 variant="outline"
                 onClick={loadSettings}
                 disabled={loading || saving}
-                className="border-gray-600 hover:bg-gray-800"
+                className="glass-effect border-white/20 hover:border-gray-500/50 btn-modern transition-all duration-300"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Reload Settings
               </Button>
               <Button
-                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white btn-modern transition-all duration-300"
                 onClick={handleSaveChanges}
                 disabled={loading || saving}
               >

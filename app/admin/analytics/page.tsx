@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { DateRange } from "react-day-picker"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
+
 import { ComparisonToggle } from "@/components/ui/comparison-toggle"
 import { ComparisonSummary } from "@/components/comparison-summary"
 import { ComparisonChart } from "@/components/comparison-chart"
@@ -466,22 +466,7 @@ function AnalyticsPageContent() {
           )
           break
 
-        case "pdf":
-          // Get all chart container IDs in the active tab
-          const tabContent = document.querySelector(`[data-tab="${activeTab}"]`)
-          if (!tabContent) break
 
-          const chartContainers = tabContent.querySelectorAll(".chart-container")
-          const chartIds = Array.from(chartContainers)
-            .map((container) => container.id)
-            .filter(Boolean)
-
-          await exportChartsAsPDF(
-            chartIds,
-            `UniEats ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Analytics`,
-            `unieats-${activeTab}-analytics-${new Date().toISOString().split("T")[0]}.pdf`,
-          )
-          break
       }
     } catch (error) {
       console.error(`Error exporting as ${type}:`, error)
@@ -499,7 +484,7 @@ function AnalyticsPageContent() {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-slide-in-up">
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-          <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} className="w-full md:w-auto glass-effect border-white/20 hover:border-blue-500/50 btn-modern" />
+
 
           <div className="flex gap-3">
             <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isLoading} className="glass-effect border-white/20 hover:border-emerald-500/50 btn-modern">
@@ -523,10 +508,7 @@ function AnalyticsPageContent() {
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   <span>Export as Excel</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled={isExporting} onClick={() => handleExport("pdf")} className="hover:bg-red-500/20">
-                  <FilePdf className="mr-2 h-4 w-4" />
-                  <span>Export as PDF</span>
-                </DropdownMenuItem>
+
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -907,9 +889,9 @@ function AnalyticsPageContent() {
                 />
               </div>
             )}
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardHeader>
-                <CardTitle>Order Fulfillment</CardTitle>
+                <CardTitle className="gradient-text">Order Fulfillment</CardTitle>
                 <CardDescription>Time to fulfill orders</CardDescription>
               </CardHeader>
               <CardContent>
@@ -926,9 +908,9 @@ function AnalyticsPageContent() {
                 )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardHeader>
-                <CardTitle>Order Completion Rate</CardTitle>
+                <CardTitle className="gradient-text">Order Completion Rate</CardTitle>
                 <CardDescription>Successfully completed orders</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1005,9 +987,9 @@ function AnalyticsPageContent() {
                 />
               </div>
             )}
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardHeader>
-                <CardTitle>New Customers</CardTitle>
+                <CardTitle className="gradient-text">New Customers</CardTitle>
                 <CardDescription>First-time orders</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1024,9 +1006,9 @@ function AnalyticsPageContent() {
                 )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardHeader>
-                <CardTitle>Returning Customers</CardTitle>
+                <CardTitle className="gradient-text">Returning Customers</CardTitle>
                 <CardDescription>Repeat order rate</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1092,9 +1074,9 @@ function AnalyticsPageContent() {
                 </div>
               </>
             )}
-            <Card>
+            <Card className="modern-card glass-effect hover-lift animate-slide-in-up">
               <CardHeader>
-                <CardTitle>Menu Efficiency</CardTitle>
+                <CardTitle className="gradient-text">Menu Efficiency</CardTitle>
                 <CardDescription>Preparation time analysis</CardDescription>
               </CardHeader>
               <CardContent>

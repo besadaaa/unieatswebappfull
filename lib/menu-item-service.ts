@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { MenuItemIngredientsService, type IngredientDetail } from './menu-item-ingredients-service'
 
 // Complete menu item interface with all fields
 export interface CompleteMenuItem {
@@ -26,6 +27,7 @@ export interface CompleteMenuItem {
   
   // Ingredients
   ingredients?: string[]
+  ingredient_details?: IngredientDetail[]
   allergens?: string[]
   
   // Customization Options
@@ -95,7 +97,37 @@ export class MenuItemService {
         return { success: false, error: error.message }
       }
 
-      return { success: true, data }
+      const createdMenuItem = data
+      console.log('Menu item created successfully:', createdMenuItem)
+
+      // Save detailed ingredient information if provided
+      console.log('🔍 [DEBUG] Checking ingredient_details:', {
+        hasIngredientDetails: !!menuItem.ingredient_details,
+        isArray: Array.isArray(menuItem.ingredient_details),
+        length: menuItem.ingredient_details?.length || 0,
+        ingredientDetails: menuItem.ingredient_details
+      })
+
+      if (menuItem.ingredient_details && Array.isArray(menuItem.ingredient_details) && menuItem.ingredient_details.length > 0) {
+        try {
+          console.log('🍽️ [DEBUG] Saving ingredient details for menu item:', createdMenuItem.id)
+          console.log('🍽️ [DEBUG] Ingredient details to save:', menuItem.ingredient_details)
+
+          await MenuItemIngredientsService.saveMenuItemIngredients(
+            createdMenuItem.id,
+            menuItem.ingredient_details
+          )
+          console.log('✅ [DEBUG] Ingredient details saved successfully')
+        } catch (ingredientError) {
+          console.error('❌ [DEBUG] Error saving ingredient details:', ingredientError)
+          console.error('❌ [DEBUG] Error stack:', ingredientError.stack)
+          // Don't fail the entire operation, just log the error
+        }
+      } else {
+        console.log('⚠️ [DEBUG] No ingredient details to save or invalid format')
+      }
+
+      return { success: true, data: createdMenuItem }
     } catch (error) {
       console.error('Error creating menu item:', error)
       return { success: false, error: 'An unexpected error occurred' }
@@ -157,7 +189,30 @@ export class MenuItemService {
         return { success: false, error: error.message }
       }
 
-      return { success: true, data }
+      const updatedMenuItem = data
+      console.log('Menu item updated successfully:', updatedMenuItem)
+
+      // Update detailed ingredient information if provided
+      if (updates.ingredient_details !== undefined) {
+        try {
+          console.log('Updating ingredient details for menu item:', id)
+          if (Array.isArray(updates.ingredient_details) && updates.ingredient_details.length > 0) {
+            await MenuItemIngredientsService.updateMenuItemIngredients(
+              id,
+              updates.ingredient_details
+            )
+          } else {
+            // If empty array, delete all ingredients
+            await MenuItemIngredientsService.deleteMenuItemIngredients(id)
+          }
+          console.log('✅ Ingredient details updated successfully')
+        } catch (ingredientError) {
+          console.error('❌ Error updating ingredient details:', ingredientError)
+          // Don't fail the entire operation, just log the error
+        }
+      }
+
+      return { success: true, data: updatedMenuItem }
     } catch (error) {
       console.error('Error updating menu item:', error)
       return { success: false, error: 'An unexpected error occurred' }
@@ -178,7 +233,18 @@ export class MenuItemService {
         return null
       }
 
-      return this.formatMenuItem(data)
+      const menuItem = this.formatMenuItem(data)
+
+      // Load ingredient details
+      try {
+        const ingredientDetails = await MenuItemIngredientsService.getMenuItemIngredients(id)
+        menuItem.ingredient_details = ingredientDetails
+      } catch (ingredientError) {
+        console.error('Error loading ingredient details:', ingredientError)
+        menuItem.ingredient_details = []
+      }
+
+      return menuItem
     } catch (error) {
       console.error('Error fetching menu item:', error)
       return null
@@ -200,7 +266,20 @@ export class MenuItemService {
         return []
       }
 
-      return (data || []).map(item => this.formatMenuItem(item))
+      const menuItems = (data || []).map(item => this.formatMenuItem(item))
+
+      // Load ingredient details for all menu items
+      for (const menuItem of menuItems) {
+        try {
+          const ingredientDetails = await MenuItemIngredientsService.getMenuItemIngredients(menuItem.id)
+          menuItem.ingredient_details = ingredientDetails
+        } catch (ingredientError) {
+          console.error('Error loading ingredient details for item:', menuItem.id, ingredientError)
+          menuItem.ingredient_details = []
+        }
+      }
+
+      return menuItems
     } catch (error) {
       console.error('Error fetching menu items:', error)
       return []
@@ -240,6 +319,7 @@ export class MenuItemService {
       is_available: data.is_available ?? true,
       nutrition_info: data.nutrition_info || {},
       ingredients: data.ingredients || [],
+      ingredient_details: [], // Will be populated separately
       allergens: data.allergens || [],
       customization_options: data.customization_options || [],
       preparation_time: data.preparation_time || 15,

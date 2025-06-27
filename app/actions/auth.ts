@@ -18,7 +18,20 @@ export async function signIn(formData: FormData) {
 
     if (error) {
       console.error('❌ Supabase auth error:', error)
-      return { success: false, message: error.message }
+
+      // Provide user-friendly error messages
+      let userMessage = error.message
+      if (error.message.includes('Invalid login credentials')) {
+        userMessage = 'Invalid email or password. Please check your credentials and try again.'
+      } else if (error.message.includes('Email not confirmed')) {
+        userMessage = 'Please check your email and confirm your account before signing in.'
+      } else if (error.message.includes('Too many requests')) {
+        userMessage = 'Too many login attempts. Please wait a few minutes before trying again.'
+      } else if (error.message.includes('User not found')) {
+        userMessage = 'No account found with this email address.'
+      }
+
+      return { success: false, message: userMessage }
     }
 
     if (!data.user) {
@@ -105,9 +118,29 @@ export async function signIn(formData: FormData) {
       message: "Signed in successfully",
       redirect: redirectUrl,
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Sign in error:', error)
-    return { success: false, message: "An unexpected error occurred" }
+
+    // Handle specific Supabase AuthApiError
+    if (error?.name === 'AuthApiError' || error?.message?.includes('Invalid login credentials')) {
+      return { success: false, message: "Invalid email or password. Please check your credentials and try again." }
+    }
+
+    // Handle other auth errors
+    if (error?.message?.includes('Email not confirmed')) {
+      return { success: false, message: "Please check your email and confirm your account before signing in." }
+    }
+
+    if (error?.message?.includes('Too many requests')) {
+      return { success: false, message: "Too many login attempts. Please wait a few minutes before trying again." }
+    }
+
+    if (error?.message?.includes('User not found')) {
+      return { success: false, message: "No account found with this email address." }
+    }
+
+    // Default user-friendly message
+    return { success: false, message: "Invalid email or password. Please check your credentials and try again." }
   }
 }
 

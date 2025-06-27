@@ -28,10 +28,10 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useTheme } from "@/components/theme-context"
 import { useRouter, usePathname } from "next/navigation"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { supabase, getCurrentUser } from "@/lib/supabase"
 import { MobileNotificationsPanel } from "@/components/mobile-notifications-panel"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { announce, registerKeyboardShortcut } from "@/lib/accessibility"
-import { getCurrentUser } from "@/lib/supabase"
 
 export function CafeteriaHeader() {
   const { theme } = useTheme()
@@ -47,6 +47,19 @@ export function CafeteriaHeader() {
   const pathname = usePathname()
   const isMobile = useMediaQuery("(max-width: 768px)")
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Format time ago helper
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
+    return time.toLocaleDateString()
+  }
 
   // Load user data from Supabase
   useEffect(() => {
@@ -147,31 +160,97 @@ export function CafeteriaHeader() {
     }
   }, [isMobile, isNotificationsOpen, router])
 
-  // Check for responses from admin in localStorage
+  // Check for real notifications from Supabase
   useEffect(() => {
-    const checkNotifications = () => {
-      const cafeteriaMessages = JSON.parse(localStorage.getItem("cafeteriaMessages") || "[]")
+    const checkNotifications = async () => {
+      try {
+        const currentUser = await getCurrentUser()
+        if (!currentUser) return
 
-      // Get system messages (responses from admin)
-      const systemMessages = cafeteriaMessages
-        .filter((msg) => msg.sender === "system")
-        .map((msg) => ({
-          id: msg.id,
-          title: "Admin Response",
-          description: msg.content.length > 50 ? msg.content.substring(0, 50) + "..." : msg.content,
-          time: new Date(msg.timestamp).toLocaleString(),
-          read: msg.read || false,
-        }))
+        // Get cafeteria for current user
+        const { data: cafeterias, error: cafeteriaError } = await supabase
+          .from('cafeterias')
+          .select('id')
+          .eq('owner_id', currentUser.id)
+          .single()
 
-      setNotifications(systemMessages.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()))
+        if (cafeteriaError || !cafeterias) return
 
-      // Count unread notifications
-      const unreadCount = systemMessages.filter((n) => !n.read).length
-      setNotificationCount(unreadCount)
+        // Fetch real notifications from Supabase (with fallback)
+        let notificationsData = []
+        try {
+          const { data: notifications, error: notificationsError } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(10)
 
-      // Announce new notifications for screen readers
-      if (unreadCount > 0 && unreadCount !== notificationCount) {
-        announce(`You have ${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`, "polite")
+          if (notificationsError) {
+            if (notificationsError.code === 'PGRST116' || notificationsError.message?.includes('does not exist')) {
+              console.log('Notifications table does not exist, using fallback')
+            } else {
+              console.error('Error fetching notifications:', notificationsError)
+            }
+          } else {
+            notificationsData = notifications || []
+          }
+        } catch (error) {
+          console.log('Notifications table not available, using fallback')
+        }
+
+        // Also check for new orders as notifications
+        const { data: newOrders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id, created_at, status, total_amount, users(full_name)')
+          .eq('cafeteria_id', cafeterias.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (ordersError) {
+          console.error('Error fetching orders:', ordersError)
+        }
+
+        // Combine notifications and new orders
+        const combinedNotifications = [
+          ...(notificationsData || []).map(n => ({
+            id: n.id,
+            title: n.title,
+            description: n.message.length > 50 ? n.message.substring(0, 50) + "..." : n.message,
+            time: formatTimeAgo(n.created_at),
+            timestamp: n.created_at,
+            read: n.is_read || false,
+            type: n.type || 'info',
+            related_order_id: n.related_order_id
+          })),
+          ...(newOrders || []).map(order => ({
+            id: `order-${order.id}`,
+            title: "New Order",
+            description: `Order from ${order.users?.full_name || 'Customer'} - ${order.total_amount} EGP`,
+            time: formatTimeAgo(order.created_at),
+            timestamp: order.created_at,
+            read: false,
+            type: 'order',
+            related_order_id: order.id
+          }))
+        ]
+
+        // Sort by creation date (timestamp)
+        combinedNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+        setNotifications(combinedNotifications.slice(0, 10))
+
+        // Count unread notifications
+        const unreadCount = combinedNotifications.filter((n) => !n.read).length
+        setNotificationCount(unreadCount)
+
+        // Announce new notifications for screen readers
+        if (unreadCount > 0 && unreadCount !== notificationCount) {
+          announce(`You have ${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`, "polite")
+        }
+      } catch (error) {
+        console.error('Error checking notifications:', error)
       }
     }
 
@@ -179,7 +258,7 @@ export function CafeteriaHeader() {
     checkNotifications()
 
     // Set up interval to check periodically
-    const interval = setInterval(checkNotifications, 5000)
+    const interval = setInterval(checkNotifications, 30000) // Check every 30 seconds
     return () => clearInterval(interval)
   }, [notificationCount])
 
@@ -195,16 +274,35 @@ export function CafeteriaHeader() {
     announce("All notifications marked as read")
   }
 
-  const handleNotificationClick = (notification) => {
-    // Mark notification as read
-    const cafeteriaMessages = JSON.parse(localStorage.getItem("cafeteriaMessages") || "[]")
-    const updatedMessages = cafeteriaMessages.map((msg) => (msg.id === notification.id ? { ...msg, read: true } : msg))
-    localStorage.setItem("cafeteriaMessages", JSON.stringify(updatedMessages))
+  const handleNotificationClick = async (notification) => {
+    // Mark notification as read in Supabase
+    if (notification.type !== 'order' && !notification.read) {
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notification.id)
+      } catch (error) {
+        console.error('Error marking notification as read:', error)
+      }
+    }
 
-    // Navigate to support page
-    router.push("/cafeteria/support")
+    // Navigate based on notification type
+    let targetPath = "/cafeteria/support" // Default fallback
+
+    if (notification.type === 'order' || notification.related_order_id) {
+      targetPath = "/cafeteria/orders"
+    } else if (notification.type === 'inventory' || notification.title.toLowerCase().includes('stock')) {
+      targetPath = "/cafeteria/inventory"
+    } else if (notification.type === 'review' || notification.title.toLowerCase().includes('review')) {
+      targetPath = "/cafeteria/analytics"
+    } else if (notification.type === 'support' || notification.title.toLowerCase().includes('support')) {
+      targetPath = "/cafeteria/support"
+    }
+
+    router.push(targetPath)
     setIsNotificationsOpen(false)
-    announce("Notification opened in support page")
+    announce(`Navigating to ${targetPath.split('/').pop()} page`)
   }
 
   const handleBellClick = () => {

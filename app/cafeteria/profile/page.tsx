@@ -189,19 +189,19 @@ export default function ProfilePage() {
       }
 
       // Import storage utility
-      const { uploadUserAvatar } = await import('@/lib/storage')
+      const { uploadCafeteriaAvatar } = await import('@/lib/storage')
 
       // Upload to Supabase Storage
-      const result = await uploadUserAvatar(file, user.id)
+      const result = await uploadCafeteriaAvatar(file, user.id)
 
       if (result.success && result.url) {
         setAvatarImage(result.url)
 
-        // Update profile with new avatar URL
+        // Update cafeteria profile with new avatar URL
         const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: result.url })
-          .eq('id', user.id)
+          .from('cafeterias')
+          .update({ image_url: result.url })
+          .eq('owner_id', user.id)
 
         if (updateError) {
           console.error('Error updating avatar URL:', updateError)
@@ -344,13 +344,13 @@ export default function ProfilePage() {
       />
 
       <div className="flex flex-col md:flex-row gap-6">
-          <Card className="w-full md:w-1/3">
+          <Card className="w-full md:w-1/3 modern-card glass-effect hover-lift animate-slide-in-up border-2">
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Manage your personal information</CardDescription>
+              <CardTitle className="gradient-text">Profile</CardTitle>
+              <CardDescription className="text-slate-400">Manage your personal information</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center space-y-4">
-              <div className="h-24 w-24 rounded-full overflow-hidden flex items-center justify-center text-2xl font-medium bg-gray-700">
+              <div className="h-24 w-24 rounded-full overflow-hidden flex items-center justify-center text-2xl font-medium bg-gradient-to-br from-emerald-500 to-teal-500 border-4 border-white/20 shadow-lg">
                 {avatarImage ? (
                   <img
                     src={avatarImage || "/placeholder.svg"}
@@ -358,36 +358,36 @@ export default function ProfilePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <>
+                  <span className="text-white font-bold">
                     {profileData.personal.firstName.charAt(0)}
                     {profileData.personal.lastName.charAt(0)}
-                  </>
+                  </span>
                 )}
               </div>
               <div className="text-center">
-                <h3 className="font-medium text-lg">{profileData.business.cafeName}</h3>
-                <p className="text-sm text-muted-foreground">{profileData.personal.email}</p>
+                <h3 className="font-semibold text-lg text-white">{profileData.business.cafeName}</h3>
+                <p className="text-sm text-slate-400">{profileData.personal.email}</p>
               </div>
               <>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                <Button variant="outline" className="w-full glass-effect border-2 hover:border-emerald-500/50 btn-modern" onClick={() => fileInputRef.current?.click()}>
                   Change Avatar
                 </Button>
               </>
             </CardContent>
           </Card>
 
-          <Card className="flex-1">
+          <Card className="flex-1 modern-card glass-effect hover-lift animate-slide-in-up border-2">
             <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>Update your account details</CardDescription>
+              <CardTitle className="gradient-text">Account Information</CardTitle>
+              <CardDescription className="text-slate-400">Update your account details</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="personal">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                  <TabsTrigger value="business">Business Info</TabsTrigger>
-                  <TabsTrigger value="security">Security</TabsTrigger>
+                <TabsList className="mb-4 glass-effect border border-white/20 p-1 h-auto rounded-xl">
+                  <TabsTrigger value="personal" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">Personal Info</TabsTrigger>
+                  <TabsTrigger value="business" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">Business Info</TabsTrigger>
+                  <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-300 hover:bg-white/5">Security</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="personal" className="space-y-4">

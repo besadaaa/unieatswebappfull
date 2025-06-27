@@ -3,65 +3,134 @@
 import { supabase } from '@/lib/supabase'
 import type { MenuItem } from '@/lib/supabase'
 import { MenuItemService, CompleteMenuItem } from '@/lib/menu-item-service'
+import { MenuItemIngredientsService, type IngredientDetail } from '@/lib/menu-item-ingredients-service'
 
-// Load menu items from Supabase with ratings
+// Load menu items from Supabase with ratings and ingredient details
 export const getMenuItems = async (cafeteriaId?: string): Promise<MenuItem[]> => {
   try {
-    let query = supabase
-      .from('menu_items')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true })
+    console.log('🔍 [DEBUG] getMenuItems called with cafeteriaId:', cafeteriaId)
 
     if (cafeteriaId) {
-      query = query.eq('cafeteria_id', cafeteriaId)
-    }
+      // Use the enhanced MenuItemService that loads ingredient details
+      console.log('🔍 [DEBUG] Using MenuItemService.getMenuItemsByCafeteria')
+      const completeMenuItems = await MenuItemService.getMenuItemsByCafeteria(cafeteriaId)
 
-    const { data: menuItems, error } = await query
-
-    if (error) {
-      console.error('Error fetching menu items:', error)
-      return []
-    }
-
-    if (!menuItems) return []
-
-    // Fetch ratings for all menu items
-    const menuItemIds = menuItems.map(item => item.id)
-    const { data: ratings, error: ratingsError } = await supabase
-      .from('menu_item_ratings')
-      .select('menu_item_id, rating')
-      .in('menu_item_id', menuItemIds)
-
-    if (ratingsError) {
-      console.error('Error fetching ratings:', ratingsError)
-      // Continue without ratings
-    }
-
-    // Calculate average ratings for each menu item
-    const ratingsMap: { [key: string]: { total: number, count: number } } = {}
-
-    ratings?.forEach(rating => {
-      const itemId = rating.menu_item_id
-      if (!ratingsMap[itemId]) {
-        ratingsMap[itemId] = { total: 0, count: 0 }
+      console.log('🔍 [DEBUG] Complete menu items loaded:', completeMenuItems.length)
+      if (completeMenuItems.length > 0) {
+        console.log('🔍 [DEBUG] Sample item ingredient_details:', completeMenuItems[0]?.ingredient_details)
       }
-      ratingsMap[itemId].total += rating.rating
-      ratingsMap[itemId].count += 1
-    })
 
-    // Add rating information to menu items
-    const menuItemsWithRatings = menuItems.map(item => ({
-      ...item,
-      rating: ratingsMap[item.id]
-        ? Number((ratingsMap[item.id].total / ratingsMap[item.id].count).toFixed(1))
-        : 0,
-      totalRatings: ratingsMap[item.id]?.count || 0
-    }))
+      // Fetch ratings for all menu items
+      const menuItemIds = completeMenuItems.map(item => item.id)
+      let ratingsMap: { [key: string]: { total: number, count: number } } = {}
 
-    return menuItemsWithRatings
+      if (menuItemIds.length > 0) {
+        const { data: ratings, error: ratingsError } = await supabase
+          .from('menu_item_ratings')
+          .select('menu_item_id, rating')
+          .in('menu_item_id', menuItemIds)
+
+        if (ratingsError) {
+          console.error('Error fetching ratings:', ratingsError)
+          // Continue without ratings
+        }
+
+        // Calculate average ratings for each menu item
+        ratings?.forEach(rating => {
+          const itemId = rating.menu_item_id
+          if (!ratingsMap[itemId]) {
+            ratingsMap[itemId] = { total: 0, count: 0 }
+          }
+          ratingsMap[itemId].total += rating.rating
+          ratingsMap[itemId].count += 1
+        })
+      }
+
+      // Transform CompleteMenuItem to MenuItem format with ratings
+      const menuItems: MenuItem[] = completeMenuItems.map(item => ({
+        id: item.id,
+        name: item.name || '',
+        description: item.description || '',
+        price: parseFloat(item.price.toString()) || 0,
+        category: item.category || '',
+        image_url: item.image_url,
+        is_available: item.is_available ?? true,
+        nutrition_info: item.nutrition_info || {},
+        ingredients: item.ingredients || [],
+        ingredient_details: item.ingredient_details || [], // Include ingredient details!
+        allergens: item.allergens || [],
+        customization_options: item.customization_options || [],
+        preparation_time: item.preparation_time || 15,
+        rating: ratingsMap[item.id]
+          ? Number((ratingsMap[item.id].total / ratingsMap[item.id].count).toFixed(1))
+          : 0,
+        total_ratings: ratingsMap[item.id]?.count || 0,
+        cafeteria_id: item.cafeteria_id,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }))
+
+      console.log('🔍 [DEBUG] Transformed menu items:', menuItems.length)
+      if (menuItems.length > 0) {
+        console.log('🔍 [DEBUG] Sample transformed item ingredient_details:', menuItems[0]?.ingredient_details)
+      }
+      return menuItems
+    } else {
+      // Fallback to direct query for cases without cafeteriaId
+      console.log('🔍 [DEBUG] Using direct query (no cafeteriaId)')
+      let query = supabase
+        .from('menu_items')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true })
+
+      const { data: menuItems, error } = await query
+
+      if (error) {
+        console.error('Error fetching menu items:', error)
+        return []
+      }
+
+      if (!menuItems) return []
+
+      // Fetch ratings for all menu items
+      const menuItemIds = menuItems.map(item => item.id)
+      const { data: ratings, error: ratingsError } = await supabase
+        .from('menu_item_ratings')
+        .select('menu_item_id, rating')
+        .in('menu_item_id', menuItemIds)
+
+      if (ratingsError) {
+        console.error('Error fetching ratings:', ratingsError)
+        // Continue without ratings
+      }
+
+      // Calculate average ratings for each menu item
+      const ratingsMap: { [key: string]: { total: number, count: number } } = {}
+
+      ratings?.forEach(rating => {
+        const itemId = rating.menu_item_id
+        if (!ratingsMap[itemId]) {
+          ratingsMap[itemId] = { total: 0, count: 0 }
+        }
+        ratingsMap[itemId].total += rating.rating
+        ratingsMap[itemId].count += 1
+      })
+
+      // Add rating information to menu items
+      const menuItemsWithRatings = menuItems.map(item => ({
+        ...item,
+        ingredient_details: [], // Empty for fallback case
+        rating: ratingsMap[item.id]
+          ? Number((ratingsMap[item.id].total / ratingsMap[item.id].count).toFixed(1))
+          : 0,
+        totalRatings: ratingsMap[item.id]?.count || 0
+      }))
+
+      return menuItemsWithRatings
+    }
   } catch (error) {
-    console.error('Error fetching menu items:', error)
+    console.error('Error in getMenuItems:', error)
     return []
   }
 }
@@ -184,7 +253,19 @@ export async function addMenuItem(formData: FormData | any) {
         preparation_time: formData.preparation_time || formData.preparationTime || 15
       }
 
+      // Handle ingredient details - store both names and detailed info
+      if (formData.ingredient_details || formData.ingredientDetails) {
+        const ingredientDetails = formData.ingredient_details || formData.ingredientDetails
+        if (Array.isArray(ingredientDetails) && ingredientDetails.length > 0) {
+          // Store ingredient names in the ingredients array
+          menuItemData.ingredients = ingredientDetails.map((ing: any) => ing.name)
+          // Store detailed ingredient information for the service
+          menuItemData.ingredient_details = ingredientDetails
+        }
+      }
+
       console.log("Final menuItemData:", menuItemData)
+      console.log("🔍 [DEBUG] ingredient_details in menuItemData:", menuItemData.ingredient_details)
     }
 
     // Validate the menu item
@@ -315,6 +396,20 @@ export async function updateMenuItem(data: FormData | any) {
         updates.nutrition_info = data.nutrition_info || data.nutritionalInfo
       }
       if (data.ingredients !== undefined) updates.ingredients = data.ingredients
+      // Handle ingredient details - store both names and detailed info
+      if (data.ingredient_details !== undefined || data.ingredientDetails !== undefined) {
+        const ingredientDetails = data.ingredient_details || data.ingredientDetails
+        if (Array.isArray(ingredientDetails) && ingredientDetails.length > 0) {
+          // Store ingredient names in the ingredients array
+          updates.ingredients = ingredientDetails.map((ing: any) => ing.name)
+          // Store detailed ingredient information for the service
+          updates.ingredient_details = ingredientDetails
+        } else {
+          // If empty array, clear both
+          updates.ingredients = []
+          updates.ingredient_details = []
+        }
+      }
       if (data.allergens !== undefined) updates.allergens = data.allergens
       if (data.customization_options !== undefined || data.customizationOptions !== undefined) {
         updates.customization_options = data.customization_options || data.customizationOptions

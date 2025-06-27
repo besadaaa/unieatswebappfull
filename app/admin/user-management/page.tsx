@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Search, UserPlus, Mail, Pencil, Trash, Download, UserX, UserCheck, MoreHorizontal, FileSpreadsheet } from "lucide-react"
+import { Search, UserPlus, Pencil, Trash, UserX, UserCheck, MoreHorizontal } from "lucide-react"
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import { toast } from "@/components/ui/use-toast"
@@ -59,7 +59,6 @@ export default function UserManagement() {
   }>({ user: null, cafeterias: [], canDelete: false })
   const [showBulkActionsDialog, setShowBulkActionsDialog] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [isExporting, setIsExporting] = useState(false)
   const [isBulkProcessing, setIsBulkProcessing] = useState(false)
   const [bulkAction, setBulkAction] = useState<'suspend' | 'unsuspend' | 'delete' | 'update_role' | ''>('')
 
@@ -166,19 +165,28 @@ export default function UserManagement() {
 
   // Handle checkbox selection
   const handleSelectUser = (userId: string) => {
+    console.log('🔲 User checkbox clicked:', userId)
     if (selectedUsers.includes(userId)) {
-      setSelectedUsers(selectedUsers.filter((id) => id !== userId))
+      const newSelection = selectedUsers.filter((id) => id !== userId)
+      setSelectedUsers(newSelection)
+      console.log('✅ User deselected. New selection:', newSelection.length)
     } else {
-      setSelectedUsers([...selectedUsers, userId])
+      const newSelection = [...selectedUsers, userId]
+      setSelectedUsers(newSelection)
+      console.log('✅ User selected. New selection:', newSelection.length)
     }
   }
 
   // Handle select all checkbox
   const handleSelectAll = () => {
+    console.log('🔲 Select all clicked. Current state:', selectAll)
     if (selectAll) {
       setSelectedUsers([])
+      console.log('✅ All users deselected')
     } else {
-      setSelectedUsers(filteredUsers.map((user) => user.id))
+      const allUserIds = filteredUsers.map((user) => user.id)
+      setSelectedUsers(allUserIds)
+      console.log('✅ All users selected:', allUserIds.length)
     }
     setSelectAll(!selectAll)
   }
@@ -521,30 +529,7 @@ export default function UserManagement() {
     }, 1500)
   }
 
-  // Handle sending email
-  const handleSendEmail = (user: User) => {
-    // Show loading state
-    toast({
-      title: "Sending email",
-      description: `Sending email to ${user.email}...`,
-    })
 
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        toast({
-          title: "Email sent",
-          description: `An email has been sent to ${user.email}.`,
-        })
-      } catch (error) {
-        toast({
-          title: "Error sending email",
-          description: "There was a problem sending the email. Please try again.",
-          variant: "destructive",
-        })
-      }
-    }, 1200)
-  }
 
   // Reset form data
   const resetForm = () => {
@@ -651,49 +636,7 @@ export default function UserManagement() {
     }
   }
 
-  // Handle export users with real Supabase integration
-  const handleExportUsers = async (format: 'csv' | 'excel' = 'csv') => {
-    try {
-      setIsExporting(true)
 
-      toast({
-        title: "Preparing export",
-        description: `Generating ${format.toUpperCase()} file of user data...`,
-      })
-
-      const response = await fetch(`/api/admin/users/export?format=${format}&includeInactive=true`)
-
-      if (!response.ok) {
-        throw new Error('Export failed')
-      }
-
-      // Get the blob from response
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.setAttribute("href", url)
-      link.setAttribute("download", `users_export_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`)
-      link.style.visibility = "hidden"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      toast({
-        title: "Export successful",
-        description: `User data exported to ${format.toUpperCase()} successfully.`,
-      })
-    } catch (error) {
-      console.error('Export error:', error)
-      toast({
-        title: "Export failed",
-        description: "There was an error exporting user data. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsExporting(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -773,8 +716,8 @@ export default function UserManagement() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="bg-[#0f1424] border-gray-700">
-                      All Status
+                    <Button variant="outline" className="glass-effect border-white/20 hover:border-purple-500/50 btn-modern transition-all duration-300">
+                      {statusFilter === "all" ? "All Status" : statusFilter}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="16"
@@ -791,10 +734,10 @@ export default function UserManagement() {
                       </svg>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Status</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setStatusFilter("Active")}>Active</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setStatusFilter("Inactive")}>Inactive</DropdownMenuItem>
+                  <DropdownMenuContent className="glass-effect border-white/20">
+                    <DropdownMenuItem onClick={() => setStatusFilter("all")} className="hover:bg-purple-500/20">All Status</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStatusFilter("Active")} className="hover:bg-purple-500/20">Active</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStatusFilter("Inactive")} className="hover:bg-purple-500/20">Inactive</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -840,9 +783,6 @@ export default function UserManagement() {
                       <td className="py-4 px-4">{user.lastActive}</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleSendEmail(user)}>
-                            <Mail size={16} />
-                          </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(user)}>
                             <Pencil size={16} />
                           </Button>
@@ -864,7 +804,7 @@ export default function UserManagement() {
 
             <div className="flex justify-between items-center mt-4 text-sm text-gray-400">
               <div>
-                Showing {filteredUsers.length} of {users.length} users
+                Showing {filteredUsers.length} of {users.length} users | Selected: {selectedUsers.length}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -887,6 +827,7 @@ export default function UserManagement() {
                   <UserCheck size={16} className="mr-2" />
                   Unsuspend Selected
                 </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -897,29 +838,7 @@ export default function UserManagement() {
                   <Trash size={16} className="mr-2" />
                   Delete Selected
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-[#0f1424] border-gray-700"
-                      disabled={isExporting}
-                    >
-                      <Download size={16} className="mr-2" />
-                      {isExporting ? 'Exporting...' : 'Export Users'}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleExportUsers('csv')}>
-                      <Download size={16} className="mr-2" />
-                      Export as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExportUsers('excel')}>
-                      <FileSpreadsheet size={16} className="mr-2" />
-                      Export as Excel
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
               </div>
             </div>
           </CardContent>
@@ -1211,6 +1130,10 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+
+
     </div>
   )
 }

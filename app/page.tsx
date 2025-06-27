@@ -27,6 +27,29 @@ export default function LandingPage() {
     setIsLoading(true)
 
     const formData = new FormData(event.currentTarget)
+    const email = formData.get("email") as string
+    const password = formData.get("password") as string
+
+    // Basic validation
+    if (!email || !password) {
+      toast({
+        title: "Login Failed",
+        description: "Please enter both email and password.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
+    if (!email.includes('@')) {
+      toast({
+        title: "Login Failed",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
 
     // Simulate network request
     try {
@@ -57,17 +80,21 @@ export default function LandingPage() {
             router.push('/suspended')
           }, 2000)
         } else {
+          // Show user-friendly error message
+          const errorMessage = result.message || "Invalid email or password. Please check your credentials and try again."
           toast({
-            title: "Error",
-            description: result.message || "Invalid credentials. Please try again.",
+            title: "Login Failed",
+            description: errorMessage,
             variant: "destructive",
           })
         }
       }
     } catch (error) {
+      console.error('Login error:', error)
+      // Show user-friendly error message for any unexpected errors
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Login Failed",
+        description: "Invalid email or password. Please check your credentials and try again.",
         variant: "destructive",
       })
     } finally {
@@ -270,7 +297,7 @@ export default function LandingPage() {
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="cafeteria">
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                       <div className="space-y-2 text-center mb-6">
                         <h3 className="text-2xl font-bold gradient-text">Cafeteria Owner Login</h3>
                         <p className="text-sm text-slate-400">
@@ -287,8 +314,7 @@ export default function LandingPage() {
                         <Input
                           id="cafeteria-email"
                           name="email"
-                          defaultValue="ayaawad@unieats.com"
-                          placeholder="ayaawad@unieats.com"
+                          placeholder="your-email@unieats.com"
                           className="glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern h-12 transition-all duration-300"
                         />
                       </div>
@@ -301,7 +327,6 @@ export default function LandingPage() {
                           <Input
                             id="cafeteria-password"
                             name="password"
-                            defaultValue="UniEats2025_Cafe"
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
                             className="pr-10 glass-effect border-white/20 hover:border-amber-500/50 focus:border-amber-500/50 btn-modern h-12 transition-all duration-300"
@@ -362,7 +387,7 @@ export default function LandingPage() {
                     </form>
                   </TabsContent>
                   <TabsContent value="admin">
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                       <div className="space-y-2 text-center mb-6">
                         <h3 className="text-2xl font-bold gradient-text">Admin Login</h3>
                         <p className="text-sm text-slate-400">
@@ -379,7 +404,6 @@ export default function LandingPage() {
                         <Input
                           id="admin-email"
                           name="email"
-                          defaultValue="admin@unieats.com"
                           placeholder="admin@unieats.com"
                           className="glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern h-12 transition-all duration-300"
                         />
@@ -393,7 +417,6 @@ export default function LandingPage() {
                           <Input
                             id="admin-password"
                             name="password"
-                            defaultValue="UniEats2025_Admin"
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
                             className="pr-10 glass-effect border-white/20 hover:border-emerald-500/50 focus:border-emerald-500/50 btn-modern h-12 transition-all duration-300"

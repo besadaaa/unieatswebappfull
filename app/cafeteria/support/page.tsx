@@ -314,9 +314,9 @@ export default function CafeteriaSupport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Ticket List */}
         <div className="md:col-span-1">
-          <Card>
+          <Card className="modern-card glass-effect hover-lift">
             <CardHeader>
-              <CardTitle>My Support Tickets</CardTitle>
+              <CardTitle className="gradient-text">My Support Tickets</CardTitle>
               <CardDescription>
                 {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
               </CardDescription>
@@ -327,13 +327,13 @@ export default function CafeteriaSupport() {
                   tickets.map((ticket) => (
                     <div
                       key={ticket.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                        selectedTicket?.id === ticket.id ? "bg-muted" : "hover:bg-muted/50"
+                      className={`p-3 rounded-lg cursor-pointer transition-all duration-300 glass-effect border border-white/10 hover:border-emerald-500/50 ${
+                        selectedTicket?.id === ticket.id ? "bg-emerald-500/20 border-emerald-500/50" : "hover:bg-white/5"
                       } ${ticket.hasUnreadMessages ? "border-l-4 border-blue-500" : ""}`}
                       onClick={() => handleTicketSelect(ticket)}
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <div className="font-medium truncate flex-1">{ticket.subject}</div>
+                        <div className="font-medium truncate flex-1 text-white">{ticket.subject}</div>
                         <div className="flex items-center gap-2">
                           {ticket.hasUnreadMessages && (
                             <span className="h-2 w-2 rounded-full bg-blue-500"></span>
@@ -341,7 +341,7 @@ export default function CafeteriaSupport() {
                           {getStatusBadge(ticket.status)}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center text-sm text-muted-foreground">
+                      <div className="flex justify-between items-center text-sm text-white/70">
                         <div>
                           {ticket.messageCount || 0} message{(ticket.messageCount || 0) !== 1 ? "s" : ""}
                         </div>
@@ -353,22 +353,22 @@ export default function CafeteriaSupport() {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-6 text-muted-foreground">No tickets yet</div>
+                  <div className="text-center py-6 text-white/70">No tickets yet</div>
                 )}
               </div>
             </CardContent>
           </Card>
 
           {/* New Ticket Form */}
-          <Card className="mt-6">
+          <Card className="mt-6 modern-card glass-effect hover-lift">
             <CardHeader>
-              <CardTitle>Create New Ticket</CardTitle>
+              <CardTitle className="gradient-text">Create New Ticket</CardTitle>
               <CardDescription>Submit a new support request</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-medium mb-1">
+                  <label htmlFor="subject" className="block text-sm font-medium mb-1 text-white">
                     Subject
                   </label>
                   <Input
@@ -376,28 +376,29 @@ export default function CafeteriaSupport() {
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Brief description of your issue"
+                    className="glass-effect border-white/20 hover:border-emerald-500/50 bg-white/5 text-white placeholder:text-white/50"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="priority" className="block text-sm font-medium mb-1">
+                  <label htmlFor="priority" className="block text-sm font-medium mb-1 text-white">
                     Priority
                   </label>
                   <select
                     id="priority"
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-white/20 bg-white/5 text-white px-3 py-2 text-sm glass-effect hover:border-emerald-500/50 transition-all duration-300"
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
+                    <option value="low" className="bg-[#1a1f36] text-white">Low</option>
+                    <option value="medium" className="bg-[#1a1f36] text-white">Medium</option>
+                    <option value="high" className="bg-[#1a1f36] text-white">High</option>
                   </select>
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium mb-1">
+                  <label htmlFor="message" className="block text-sm font-medium mb-1 text-white">
                     Message
                   </label>
                   <Textarea
@@ -405,12 +406,13 @@ export default function CafeteriaSupport() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Describe your issue in detail"
+                    className="glass-effect border-white/20 hover:border-emerald-500/50 bg-white/5 text-white placeholder:text-white/50"
                     rows={4}
                     required
                   />
                 </div>
 
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full btn-modern glass-effect border-white/20 hover:border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold transition-all duration-300">
                   Submit Ticket
                 </Button>
               </form>
@@ -421,10 +423,10 @@ export default function CafeteriaSupport() {
         {/* Selected Ticket */}
         <div className="md:col-span-2">
           {selectedTicket ? (
-            <Card>
+            <Card className="modern-card glass-effect hover-lift">
               <CardHeader>
                 <div className="flex items-center gap-2 mb-1">
-                  <CardTitle>{selectedTicket.subject}</CardTitle>
+                  <CardTitle className="gradient-text">{selectedTicket.subject}</CardTitle>
                   {getStatusBadge(selectedTicket.status)}
                 </div>
                 <CardDescription>Created on {new Date(selectedTicket.timestamp).toLocaleString()}</CardDescription>
@@ -432,19 +434,19 @@ export default function CafeteriaSupport() {
               <CardContent>
                 <div className="space-y-6">
                   {/* Messages from conversation */}
-                  {selectedTicketDetails?.messages?.map((message: any, index: number) => (
+                  {selectedTicketDetails?.messages?.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((message: any, index: number) => (
                     <div key={message.id} className="flex gap-4">
                       {message.sender_id === user?.id ? (
                         // User message
                         <>
-                          <Avatar>
-                            <AvatarFallback>CM</AvatarFallback>
+                          <Avatar className="border border-white/20">
+                            <AvatarFallback className="bg-emerald-500/20 text-emerald-400">CM</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-2">
-                            <div className="bg-primary text-primary-foreground p-4 rounded-lg">
+                            <div className="bg-gradient-to-r from-emerald-500/20 to-teal-600/20 border border-emerald-500/30 text-white p-4 rounded-lg glass-effect">
                               <p>{message.content}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-white/70">
                               You • {new Date(message.created_at).toLocaleString()}
                             </p>
                           </div>
@@ -452,14 +454,14 @@ export default function CafeteriaSupport() {
                       ) : (
                         // Admin message
                         <>
-                          <Avatar>
-                            <AvatarFallback>AD</AvatarFallback>
+                          <Avatar className="border border-white/20">
+                            <AvatarFallback className="bg-blue-500/20 text-blue-400">AD</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-2">
-                            <div className="bg-muted p-4 rounded-lg">
+                            <div className="bg-white/5 border border-white/20 text-white p-4 rounded-lg glass-effect">
                               <p>{message.content}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-white/70">
                               Admin • {new Date(message.created_at).toLocaleString()}
                             </p>
                           </div>

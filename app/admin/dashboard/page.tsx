@@ -146,56 +146,97 @@ export default function AdminDashboard() {
   }, [cafeteriaFilter, cafeterias])
 
   // Handle export data
-  const handleExportData = () => {
-    toast({
-      title: "Exporting dashboard data",
-      description: "Your data export has started and will be ready shortly.",
-    })
+  const handleExportData = async () => {
+    try {
+      toast({
+        title: "Exporting dashboard data",
+        description: "Fetching real data from database...",
+      })
 
-    // Simulate download with a delay
-    setTimeout(() => {
-      try {
-        // Create CSV content
-        const headers = ["Month", "Revenue", "Orders", "Users"]
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      // Fetch real data from the dashboard API
+      const response = await fetch(`/api/dashboard?timeRange=${encodeURIComponent(timeRange)}&cafeteriaId=${cafeteriaFilter}`)
 
-        const csvRows = [headers.join(",")]
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data')
+      }
 
-        // Use real data from state
+      const dashboardData = await response.json()
 
-        for (let i = 0; i < 12; i++) {
-          const revenue = chartData.revenue[i] || 0
-          const orders = chartData.orders[i] || 0
-          const users = chartData.users[i] || 0
+      // Create comprehensive CSV content with real data
+      const csvRows = []
 
-          csvRows.push([chartData.months[i] || `Month ${i + 1}`, revenue, orders, users].join(","))
-        }
+      // Add summary metrics
+      csvRows.push("Dashboard Summary")
+      csvRows.push("Metric,Value")
+      csvRows.push(`Total Cafeterias,${dashboardData.metrics?.totalCafeterias || 0}`)
+      csvRows.push(`Active Cafeterias,${dashboardData.metrics?.activeCafeterias || 0}`)
+      csvRows.push(`Total Users,${dashboardData.metrics?.totalUsers || 0}`)
+      csvRows.push(`Total Orders,${dashboardData.metrics?.totalOrders || 0}`)
+      csvRows.push(`Total Revenue,${dashboardData.metrics?.totalRevenue?.toFixed(2) || '0.00'} EGP`)
+      csvRows.push(`User Service Fees,${dashboardData.metrics?.userServiceFees?.toFixed(2) || '0.00'} EGP`)
+      csvRows.push(`Cafeteria Commissions,${dashboardData.metrics?.cafeteriaCommissions?.toFixed(2) || '0.00'} EGP`)
+      csvRows.push("") // Empty row
 
-        const csvContent = csvRows.join("\n")
+      // Add chart data
+      csvRows.push("Monthly Data")
+      csvRows.push("Month,Revenue (EGP),Orders,Users")
 
-        // Create a blob and download link
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-        link.setAttribute("href", url)
-        link.setAttribute("download", `dashboard-data-${timeRange.toLowerCase().replace(/\s/g, "-")}.csv`)
-        link.style.visibility = "hidden"
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+      const months = dashboardData.charts?.months || []
+      const revenue = dashboardData.charts?.revenue || []
+      const orders = dashboardData.charts?.orders || []
+      const users = dashboardData.charts?.users || []
 
-        toast({
-          title: "Export complete",
-          description: "Dashboard data has been exported successfully.",
-        })
-      } catch (error) {
-        toast({
-          title: "Export failed",
-          description: "There was an error exporting your data. Please try again.",
-          variant: "destructive",
+      for (let i = 0; i < months.length; i++) {
+        csvRows.push([
+          months[i] || `Month ${i + 1}`,
+          revenue[i]?.toFixed(2) || '0.00',
+          orders[i] || 0,
+          users[i] || 0
+        ].join(","))
+      }
+
+      csvRows.push("") // Empty row
+
+      // Add cafeteria data if available
+      if (dashboardData.cafeterias && dashboardData.cafeterias.length > 0) {
+        csvRows.push("Cafeterias")
+        csvRows.push("Name,Location,Status,Rating")
+        dashboardData.cafeterias.forEach(cafe => {
+          csvRows.push([
+            `"${cafe.name || 'Unknown'}"`,
+            `"${cafe.location || 'Unknown'}"`,
+            cafe.operational_status || 'unknown',
+            cafe.rating?.toFixed(1) || '0.0'
+          ].join(","))
         })
       }
-    }, 1500)
+
+      const csvContent = csvRows.join("\n")
+
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.setAttribute("href", url)
+      link.setAttribute("download", `dashboard-export-${timeRange.toLowerCase().replace(/\s/g, "-")}-${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = "hidden"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast({
+        title: "Export complete",
+        description: "Real dashboard data has been exported successfully.",
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting your data. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle refresh data
@@ -225,33 +266,14 @@ export default function AdminDashboard() {
 
   // Handle time range change
   const handleTimeRangeChange = async (value: string) => {
-    toast({
-      title: "Updating time range",
-      description: `Loading data for: ${value}...`,
-    })
-
     setTimeRange(value)
-    // In a real implementation, you would refetch data based on the new time range
-    // For now, we'll just update the state
-    toast({
-      title: "Time range updated",
-      description: `Dashboard now showing data for: ${value}`,
-    })
+    // Data will be refetched automatically via useEffect
   }
 
   // Handle cafeteria filter change
   const handleCafeteriaFilterChange = (value: string) => {
-    toast({
-      title: "Applying filter",
-      description: value === "all" ? "Loading data for all cafeterias..." : `Loading data for ${value}...`,
-    })
-
     setCafeteriaFilter(value)
-    toast({
-      title: "Filter applied",
-      description: value === "all" ? "Showing data for all cafeterias" : `Showing data for ${value}`,
-      variant: "default",
-    })
+    // Data will be refetched automatically via useEffect
   }
 
   // Handle chart view change

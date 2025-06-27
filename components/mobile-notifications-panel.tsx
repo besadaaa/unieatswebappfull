@@ -130,10 +130,33 @@ export function MobileNotificationsPanel({ isOpen, onClose }: MobileNotification
       handleMarkAsRead(notification.id)
     }
 
-    // Navigate to support page
-    router.push("/cafeteria/support")
+    // Navigate based on notification type
+    let targetPath = "/cafeteria/support" // Default fallback
+
+    if (notification.title.toLowerCase().includes('order')) {
+      targetPath = "/cafeteria/orders"
+    } else if (notification.title.toLowerCase().includes('stock') || notification.title.toLowerCase().includes('inventory')) {
+      targetPath = "/cafeteria/inventory"
+    } else if (notification.title.toLowerCase().includes('review')) {
+      targetPath = "/cafeteria/analytics"
+    }
+
+    router.push(targetPath)
     onClose()
-    announce("Opening notification in support page")
+    announce(`Navigating to ${targetPath.split('/').pop()} page`)
+  }
+
+  // Format time ago helper
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
+    return time.toLocaleDateString()
   }
 
   // Touch gesture handlers
@@ -307,7 +330,7 @@ export function MobileNotificationsPanel({ isOpen, onClose }: MobileNotification
                               <span className="ml-2 h-2 w-2 rounded-full bg-yellow-500" aria-hidden="true"></span>
                             )}
                           </span>
-                          <span className="text-xs text-gray-400">{notification.time}</span>
+                          <span className="text-xs text-gray-400">{formatTimeAgo(notification.time)}</span>
                         </div>
                         <p className="text-sm text-gray-300 line-clamp-2">{notification.description}</p>
 

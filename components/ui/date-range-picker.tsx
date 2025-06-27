@@ -22,7 +22,10 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
           <Button
             id="date"
             variant={"outline"}
-            className={cn("w-[300px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
+            className={cn(
+              "w-[300px] justify-start text-left font-normal glass-effect border-white/20 hover:border-emerald-500/50 btn-modern transition-all duration-300",
+              !dateRange && "text-muted-foreground"
+            )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {dateRange?.from ? (
@@ -38,7 +41,7 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 glass-effect border-white/20 bg-[#1a1f36]/95 backdrop-blur-xl" align="start">
           <Calendar
             initialFocus
             mode="range"
@@ -46,6 +49,7 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
             selected={dateRange}
             onSelect={onDateRangeChange}
             numberOfMonths={2}
+            className="modern-calendar"
           />
         </PopoverContent>
       </Popover>

@@ -213,7 +213,7 @@ export default function AuditLogs() {
               <div className="flex gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="bg-[#0f1424] border-gray-700">
+                    <Button variant="outline" className="glass-effect border-white/20 hover:border-purple-500/50 btn-modern transition-all duration-300">
                       <Calendar className="mr-2 h-4 w-4" />
                       {dateFilter === "all-dates"
                         ? "All Dates"
@@ -242,33 +242,33 @@ export default function AuditLogs() {
                       </svg>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-[#1a1f36] border-gray-700">
+                  <DropdownMenuContent className="glass-effect border-white/20">
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-purple-500/20 cursor-pointer"
                       onClick={() => setDateFilter("all-dates")}
                     >
                       All Dates
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-purple-500/20 cursor-pointer"
                       onClick={() => setDateFilter("today")}
                     >
                       Today
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-purple-500/20 cursor-pointer"
                       onClick={() => setDateFilter("yesterday")}
                     >
                       Yesterday
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-purple-500/20 cursor-pointer"
                       onClick={() => setDateFilter("this-week")}
                     >
                       This Week
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-purple-500/20 cursor-pointer"
                       onClick={() => setDateFilter("this-month")}
                     >
                       This Month
@@ -278,7 +278,7 @@ export default function AuditLogs() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="bg-[#0f1424] border-gray-700">
+                    <Button variant="outline" className="glass-effect border-white/20 hover:border-blue-500/50 btn-modern transition-all duration-300">
                       <User className="mr-2 h-4 w-4" />
                       {userFilter === "all-users"
                         ? "All Users"
@@ -307,33 +307,33 @@ export default function AuditLogs() {
                       </svg>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-[#1a1f36] border-gray-700">
+                  <DropdownMenuContent className="glass-effect border-white/20">
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-blue-500/20 cursor-pointer"
                       onClick={() => setUserFilter("all-users")}
                     >
                       All Users
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-blue-500/20 cursor-pointer"
                       onClick={() => setUserFilter("admin")}
                     >
                       Admin Users
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-blue-500/20 cursor-pointer"
                       onClick={() => setUserFilter("cafeteria")}
                     >
                       Cafeteria Managers
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-blue-500/20 cursor-pointer"
                       onClick={() => setUserFilter("student")}
                     >
                       Students
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="hover:bg-[#0f1424] cursor-pointer"
+                      className="hover:bg-blue-500/20 cursor-pointer"
                       onClick={() => setUserFilter("system")}
                     >
                       System

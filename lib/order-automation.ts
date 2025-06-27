@@ -106,17 +106,8 @@ export const processNewOrder = async (
       throw new Error('Failed to create financial transaction')
     }
     
-    // 4. Deduct inventory
-    const inventoryDeducted = await deductInventoryForOrder(
-      orderData.order_items.map(item => ({
-        menuItemId: item.menu_item_id,
-        quantity: item.quantity
-      }))
-    )
-    
-    if (!inventoryDeducted) {
-      console.warn('Failed to deduct inventory for order:', order.id)
-    }
+    // 4. Inventory deduction is handled automatically by database trigger
+    console.log('✅ Inventory deduction handled automatically by database trigger for order:', order.id)
     
     // 5. Update menu item availability
     await updateMenuItemAvailability(orderData.cafeteria_id)

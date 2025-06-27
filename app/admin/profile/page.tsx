@@ -292,7 +292,7 @@ export default function AdminProfilePage() {
       <div className="flex flex-col md:flex-row gap-6 mt-6">
         <Card className="w-full md:w-1/3 modern-card glass-effect hover-lift">
           <CardHeader>
-            <CardTitle>Profile</CardTitle>
+            <CardTitle className="gradient-text">Profile</CardTitle>
             <CardDescription>Manage your personal information</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center space-y-4">
@@ -326,7 +326,7 @@ export default function AdminProfilePage() {
 
         <Card className="flex-1 modern-card glass-effect hover-lift">
           <CardHeader>
-            <CardTitle>Account Information</CardTitle>
+            <CardTitle className="gradient-text">Account Information</CardTitle>
             <CardDescription>Update your account details</CardDescription>
           </CardHeader>
           <CardContent>
@@ -345,6 +345,7 @@ export default function AdminProfilePage() {
                       value={isEditing ? tempData.personal.firstName : profileData.personal.firstName}
                       onChange={(e) => handleInputChange("personal", "firstName", e.target.value)}
                       readOnly={!isEditing}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern transition-all duration-300"
                     />
                   </div>
                   <div className="space-y-2">
@@ -354,6 +355,7 @@ export default function AdminProfilePage() {
                       value={isEditing ? tempData.personal.lastName : profileData.personal.lastName}
                       onChange={(e) => handleInputChange("personal", "lastName", e.target.value)}
                       readOnly={!isEditing}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern transition-all duration-300"
                     />
                   </div>
                   <div className="space-y-2">
@@ -363,7 +365,7 @@ export default function AdminProfilePage() {
                       value={isEditing ? tempData.personal.email : profileData.personal.email}
                       onChange={(e) => handleInputChange("personal", "email", e.target.value)}
                       readOnly={true}
-                      className="bg-muted"
+                      className="glass-effect border-white/20 bg-white/5 text-gray-400"
                     />
                     <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                   </div>
@@ -374,6 +376,7 @@ export default function AdminProfilePage() {
                       value={isEditing ? tempData.personal.phone : profileData.personal.phone}
                       onChange={(e) => handleInputChange("personal", "phone", e.target.value)}
                       readOnly={!isEditing}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -390,6 +393,7 @@ export default function AdminProfilePage() {
                       onChange={(e) => handleInputChange("security", "currentPassword", e.target.value)}
                       readOnly={!isEditing}
                       placeholder={isEditing ? "Enter current password" : "••••••••"}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern transition-all duration-300"
                     />
                   </div>
                   <div className="space-y-2">
@@ -401,6 +405,7 @@ export default function AdminProfilePage() {
                       onChange={(e) => handleInputChange("security", "newPassword", e.target.value)}
                       readOnly={!isEditing}
                       placeholder={isEditing ? "Enter new password" : "••••••••"}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern transition-all duration-300"
                     />
                   </div>
                   <div className="space-y-2">
@@ -412,6 +417,7 @@ export default function AdminProfilePage() {
                       onChange={(e) => handleInputChange("security", "confirmPassword", e.target.value)}
                       readOnly={!isEditing}
                       placeholder={isEditing ? "Confirm new password" : "••••••••"}
+                      className="glass-effect border-white/20 hover:border-purple-500/50 focus:border-purple-500/50 btn-modern transition-all duration-300"
                     />
                   </div>
                 </div>

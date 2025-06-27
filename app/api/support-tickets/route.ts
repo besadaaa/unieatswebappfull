@@ -118,18 +118,28 @@ export async function GET(request: NextRequest) {
       const profile = profilesMap.get(ticket.user_id)
       const authUser = authUsersMap.get(ticket.user_id)
 
-      // Format time
+      // Format time with proper timezone handling
       const ticketTime = new Date(ticket.created_at)
       const now = new Date()
       const diffInMinutes = Math.floor((now.getTime() - ticketTime.getTime()) / (1000 * 60))
 
       let timeString = ""
-      if (diffInMinutes < 60) {
-        timeString = `${diffInMinutes} mins ago`
+      if (diffInMinutes < 1) {
+        timeString = "Just now"
+      } else if (diffInMinutes < 60) {
+        timeString = `${diffInMinutes} min${diffInMinutes !== 1 ? 's' : ''} ago`
       } else if (diffInMinutes < 1440) {
-        timeString = `${Math.floor(diffInMinutes / 60)} hours ago`
+        const hours = Math.floor(diffInMinutes / 60)
+        timeString = `${hours} hour${hours !== 1 ? 's' : ''} ago`
       } else {
-        timeString = ticketTime.toLocaleDateString()
+        // Show full date and time for older tickets
+        timeString = ticketTime.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
       }
 
       // Determine status color and priority color
@@ -199,7 +209,14 @@ export async function GET(request: NextRequest) {
             content: msg.content,
             timestamp: msg.created_at,
             isAdmin: isAdmin,
-            adminName: isAdmin ? (senderProfile?.full_name || 'Admin Support') : undefined
+            adminName: isAdmin ? (senderProfile?.full_name || 'Admin Support') : undefined,
+            formattedTime: new Date(msg.created_at).toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            })
           }
         })
 

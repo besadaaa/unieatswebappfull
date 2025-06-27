@@ -24,6 +24,7 @@ import { getCurrentUser, getCafeterias } from "@/lib/supabase"
 import { useEffect } from "react"
 import { OptimizedOrdersService, OptimizedOrder } from "@/lib/optimized-orders-service"
 import { CafeteriaPageHeader } from "@/components/cafeteria/page-header"
+import { CafeteriaCancellationDialog } from "@/components/cafeteria-order-cancellation-dialog"
 
 // Orders are fetched from Supabase using OptimizedOrdersService
 
@@ -64,6 +65,9 @@ export default function OrdersPage() {
   const [sortField, setSortField] = useState<'created_at' | 'pickup_time' | 'total_amount' | 'status'>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [cafeteriaId, setCafeteriaId] = useState<string>("")
+  const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false)
+  const [orderToCancel, setOrderToCancel] = useState<any>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [orderCounts, setOrderCounts] = useState({
     new: 0,
     preparing: 0,
@@ -281,6 +285,61 @@ export default function OrdersPage() {
         description: "Failed to update order status. Please try again.",
         variant: "destructive",
       })
+    }
+  }
+
+  // Handle order cancellation with reason
+  const handleCancelOrder = (order: any) => {
+    setOrderToCancel(order)
+    setCancellationDialogOpen(true)
+  }
+
+  const confirmCancelOrder = async (reason: string) => {
+    if (!orderToCancel) return
+
+    setIsCancelling(true)
+    try {
+      // Update order status to cancelled with reason using API endpoint
+      const response = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: orderToCancel.id,
+          cafeteriaId: cafeteriaId,
+          reason: reason,
+          cancelledBy: 'cafeteria'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to cancel order')
+      }
+
+      // Reload orders
+      if (cafeteriaId) {
+        await loadOrdersOptimized(cafeteriaId)
+      }
+
+      toast({
+        title: "Order cancelled",
+        description: `Order #${orderToCancel.order_number} has been cancelled successfully.`,
+      })
+
+      // Close dialog
+      setCancellationDialogOpen(false)
+      setOrderToCancel(null)
+    } catch (error) {
+      console.error('Error cancelling order:', error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel order. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -530,7 +589,7 @@ export default function OrdersPage() {
                         </Button>
                       )}
                       {(order.status === "new" || order.status === "preparing") && (
-                        <Button variant="ghost" size="sm" onClick={() => updateOrderStatus(order.id, "cancelled")}>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelOrder(order)}>
                           Cancel
                         </Button>
                       )}
@@ -648,10 +707,10 @@ export default function OrdersPage() {
           setSelectedOrderDetails(null)
         }
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
           <DialogHeader>
-            <DialogTitle>Order Details</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="gradient-text">Order Details</DialogTitle>
+            <DialogDescription className="text-slate-400">
               {selectedOrder && `Order ${selectedOrder.id} placed by ${selectedOrder.customer_name}`}
             </DialogDescription>
           </DialogHeader>
@@ -662,72 +721,78 @@ export default function OrdersPage() {
               <span>Loading order details...</span>
             </div>
           ) : selectedOrderDetails ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6 p-2">
+              {/* Order Status and Time */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Status</p>
                   <Badge
-                    className={`mt-1 ${
+                    className={`${
                       selectedOrderDetails.status === "new"
-                        ? "bg-blue-500"
+                        ? "bg-blue-500 hover:bg-blue-600"
                         : selectedOrderDetails.status === "preparing"
-                          ? "bg-yellow-500"
+                          ? "bg-yellow-500 hover:bg-yellow-600"
                           : selectedOrderDetails.status === "ready"
-                            ? "bg-green-500"
+                            ? "bg-green-500 hover:bg-green-600"
                             : selectedOrderDetails.status === "completed"
-                              ? "bg-gray-500"
-                              : "bg-red-500"
-                    }`}
+                              ? "bg-gray-500 hover:bg-gray-600"
+                              : "bg-red-500 hover:bg-red-600"
+                    } text-white font-medium px-3 py-1`}
                   >
                     {selectedOrderDetails.status.charAt(0).toUpperCase() + selectedOrderDetails.status.slice(1)}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Placed</p>
-                  <p className="mt-1">{formatDate(selectedOrderDetails.created_at)}</p>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Time Placed</p>
+                  <p className="text-sm font-medium">{formatDate(selectedOrderDetails.created_at)}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Pickup Time and Total */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Time</p>
-                  <div className="flex items-center mt-1">
-                    <Clock className="mr-1 h-4 w-4 text-blue-500" />
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Pickup Time</p>
+                  <div className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4 text-blue-500" />
                     <span className="font-medium text-blue-600">
                       {selectedOrderDetails.pickup_time ? formatDate(selectedOrderDetails.pickup_time) : 'ASAP'}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
-                  <p className="mt-1 font-medium">{selectedOrderDetails.total_amount.toFixed(2)} EGP</p>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total</p>
+                  <p className="text-lg font-bold text-emerald-600">{selectedOrderDetails.total_amount.toFixed(2)} EGP</p>
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Customer</p>
-                <div className="mt-1">
-                  <p className="text-sm font-medium">{selectedOrderDetails.customer_details.full_name}</p>
+              {/* Customer Information */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">Customer</p>
+                <div className="space-y-1">
+                  <p className="font-medium text-base">{selectedOrderDetails.customer_details.full_name}</p>
                   {selectedOrderDetails.customer_details.email && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{selectedOrderDetails.customer_details.email}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{selectedOrderDetails.customer_details.email}</p>
                   )}
                   {selectedOrderDetails.customer_details.phone && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{selectedOrderDetails.customer_details.phone}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{selectedOrderDetails.customer_details.phone}</p>
                   )}
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Items</p>
-                <ul className="mt-1 space-y-2">
+              {/* Order Items */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">Order Items</p>
+                <div className="space-y-3">
                   {selectedOrderDetails.order_items && selectedOrderDetails.order_items.length > 0 ? (
                     selectedOrderDetails.order_items.map((item: any, index: number) => (
-                      <li key={index} className="text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                      <div key={index} className="p-3 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{item.quantity}x {item.menu_item_name}</span>
-                              <span className="text-gray-500 dark:text-gray-400">@ {item.price.toFixed(2)} EGP each</span>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-base">{item.quantity}x {item.menu_item_name}</span>
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              @ {item.price.toFixed(2)} EGP each
                             </div>
                             {item.notes && (
                               <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-4 border-blue-400">
@@ -743,20 +808,44 @@ export default function OrdersPage() {
                               </div>
                             )}
                           </div>
-                          <span className="font-medium text-right ml-4">{item.total.toFixed(2)} EGP</span>
+                          <div className="text-right ml-4">
+                            <span className="font-bold text-lg text-emerald-600">{item.total.toFixed(2)} EGP</span>
+                          </div>
                         </div>
-                      </li>
+                      </div>
                     ))
                   ) : (
-                    <li className="text-sm text-gray-400 dark:text-gray-500">No items available</li>
+                    <div className="text-center py-4 text-slate-500">No items available</div>
                   )}
-                </ul>
+                </div>
               </div>
 
+              {/* Cancellation Information */}
               {selectedOrderDetails.status === "cancelled" && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Cancellation Reason</p>
-                  <p className="mt-1 text-sm">{selectedOrderDetails.reason || "No reason provided"}</p>
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <h4 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-3">Cancellation Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancelled By</p>
+                      <p className="text-sm font-semibold capitalize text-red-800 dark:text-red-300">
+                        {selectedOrderDetails.cancelled_by || "Unknown"}
+                      </p>
+                    </div>
+                    {selectedOrderDetails.cancelled_at && (
+                      <div>
+                        <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancelled At</p>
+                        <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+                          {new Date(selectedOrderDetails.cancelled_at).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancellation Reason</p>
+                    <p className="text-sm text-red-800 dark:text-red-300 bg-red-100 dark:bg-red-900/40 p-2 rounded border">
+                      {selectedOrderDetails.cancellation_reason || "No reason provided"}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -856,6 +945,18 @@ export default function OrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cancellation Dialog */}
+      <CafeteriaCancellationDialog
+        isOpen={cancellationDialogOpen}
+        onClose={() => {
+          setCancellationDialogOpen(false)
+          setOrderToCancel(null)
+        }}
+        onConfirm={confirmCancelOrder}
+        orderNumber={orderToCancel?.order_number || ''}
+        isLoading={isCancelling}
+      />
     </div>
   )
 }

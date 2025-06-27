@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Charts } from "@/components/charts"
@@ -88,9 +88,12 @@ export default function CafeteriaDashboard() {
   })
 
   // Fetch dashboard data from Supabase
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       console.log('🚀 Starting fetchDashboardData...')
+
+
+
       setIsLoading(true)
       setError(null)
 
@@ -192,19 +195,113 @@ export default function CafeteriaDashboard() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [timeRange])
 
   // Load data on component mount and when filters change
   useEffect(() => {
     fetchDashboardData()
   }, [timeRange])
 
-  // Handle export data
-  const handleExportData = () => {
+  // Handle export data with real Supabase data
+  const handleExportData = async () => {
     toast({
       title: "Exporting dashboard data",
       description: "Your data export has started and will be ready shortly.",
     })
+
+    try {
+      // Get current user and cafeteria
+      const currentUser = await getCurrentUser()
+      const cafeterias = await getCafeterias()
+      const userCafeteria = cafeterias.find(c => c.owner_id === currentUser?.id) || cafeterias[0]
+
+      if (!userCafeteria) {
+        toast({
+          title: "Export failed",
+          description: "No cafeteria found for export.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Fetch comprehensive data from Supabase
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            menu_items (name, price)
+          ),
+          users (full_name, email)
+        `)
+        .eq('cafeteria_id', userCafeteria.id)
+        .order('created_at', { ascending: false })
+
+      if (ordersError) throw ordersError
+
+      const { data: menuItems, error: menuError } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('cafeteria_id', userCafeteria.id)
+
+      if (menuError) throw menuError
+
+      // Create comprehensive CSV content
+      let csvContent = "data:text/csv;charset=utf-8,"
+      csvContent += `UniEats Cafeteria Dashboard Export\n`
+      csvContent += `Cafeteria: ${userCafeteria.name}\n`
+      csvContent += `Generated on: ${new Date().toLocaleDateString()}\n\n`
+
+      // Orders Summary
+      csvContent += `ORDERS SUMMARY\n`
+      csvContent += `Order ID,Customer Name,Customer Email,Status,Total Amount,Created Date,Items Count\n`
+      orders?.forEach(order => {
+        const customerName = order.users?.full_name || 'Unknown'
+        const customerEmail = order.users?.email || 'Unknown'
+        const itemsCount = order.order_items?.length || 0
+        csvContent += `${order.id},${customerName},${customerEmail},${order.status},${order.total_amount},${new Date(order.created_at).toLocaleDateString()},${itemsCount}\n`
+      })
+
+      csvContent += `\n\nMENU ITEMS\n`
+      csvContent += `Item Name,Category,Price,Available,Description\n`
+      menuItems?.forEach(item => {
+        csvContent += `${item.name},${item.category},${item.price},${item.is_available ? 'Yes' : 'No'},"${item.description || ''}"\n`
+      })
+
+      csvContent += `\n\nDAILY METRICS\n`
+      csvContent += `Metric,Value\n`
+      csvContent += `Total Orders,${dashboardMetrics.totalOrders}\n`
+      csvContent += `Total Revenue,${dashboardMetrics.totalRevenue} EGP\n`
+      csvContent += `Today Orders,${dashboardMetrics.todayOrders}\n`
+      csvContent += `Today Revenue,${dashboardMetrics.todayRevenue} EGP\n`
+      csvContent += `Weekly Orders,${dashboardMetrics.weeklyOrders}\n`
+      csvContent += `Weekly Revenue,${dashboardMetrics.weeklyRevenue} EGP\n`
+      csvContent += `Monthly Orders,${dashboardMetrics.monthlyOrders}\n`
+      csvContent += `Monthly Revenue,${dashboardMetrics.monthlyRevenue} EGP\n`
+      csvContent += `Average Order Value,${dashboardMetrics.averageOrderValue} EGP\n`
+
+      // Create and download file
+      const encodedUri = encodeURI(csvContent)
+      const link = document.createElement("a")
+      link.setAttribute("href", encodedUri)
+      link.setAttribute("download", `${userCafeteria.name.toLowerCase().replace(/\s+/g, "-")}-dashboard-export-${new Date().toISOString().split("T")[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: "Export complete",
+        description: "Dashboard data has been exported successfully.",
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting your data. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle refresh data
@@ -247,7 +344,9 @@ export default function CafeteriaDashboard() {
   }
 
   // Handle chart view change
-  const handleChartViewChange = (view: string) => {
+  const handleChartViewChange = useCallback((view: string) => {
+    if (view === chartView) return // Prevent unnecessary updates
+
     toast({
       title: "Changing view",
       description: `Loading ${view} data...`,
@@ -260,7 +359,7 @@ export default function CafeteriaDashboard() {
         description: `Now showing ${view} data`,
       })
     }, 800)
-  }
+  }, [chartView])
 
   // Show error state
   if (error) {
@@ -287,6 +386,8 @@ export default function CafeteriaDashboard() {
         title="Dashboard Overview"
         subtitle="Real-time data from your cafeteria"
       />
+
+
 
       <div className="flex justify-end items-center mb-6">
         <div className="flex gap-3 animate-slide-in-right">
@@ -326,10 +427,7 @@ export default function CafeteriaDashboard() {
               )}
             </Button>
 
-            <Button variant="outline" className="glass-effect border-white/20 hover:border-purple-500/50 btn-modern transition-all duration-300" onClick={handleExportData}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
+
         </div>
       </div>
 
@@ -442,7 +540,7 @@ export default function CafeteriaDashboard() {
                 <h3 className="text-xl font-semibold gradient-text">
                   Monthly {chartView.charAt(0).toUpperCase() + chartView.slice(1)}
                 </h3>
-                <Select defaultValue={chartView} onValueChange={handleChartViewChange}>
+                <Select value={chartView} onValueChange={handleChartViewChange}>
                   <SelectTrigger className="w-[180px] glass-effect border-white/20 hover:border-emerald-500/50 btn-modern">
                     <SelectValue placeholder="Select view" />
                   </SelectTrigger>
@@ -483,10 +581,7 @@ export default function CafeteriaDashboard() {
             <CardContent className="p-6 relative">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold gradient-text">Popular Items</h3>
-                <Button variant="outline" className="glass-effect border-white/20 hover:border-purple-500/50 btn-modern" onClick={handleExportData}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
+
               </div>
               {isLoading ? (
                 <div className="h-[280px] rounded-xl loading-shimmer"></div>
