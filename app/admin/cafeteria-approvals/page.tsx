@@ -362,10 +362,10 @@ export default function CafeteriaApprovals() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredApplications.length > 0 ? (
                 filteredApplications.map((application) => (
-                  <Card key={application.id} className="bg-[#0f1424] border-0">
+                  <Card key={application.id} className="glass-effect border-white/10 hover:border-white/20 transition-all duration-300">
                     <CardContent className="p-6">
                       <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full glass-effect border-white/10 overflow-hidden flex items-center justify-center">
                           <User size={24} className="text-white" />
                         </div>
                         <div>
@@ -422,14 +422,14 @@ export default function CafeteriaApprovals() {
                           <>
                             <Button
                               variant="outline"
-                              className="bg-[#0f1424] border-gray-700 text-red-500"
+                              className="glass-effect border-white/20 hover:border-red-500/50 text-red-400 hover:text-red-300"
                               onClick={() => setConfirmAction({ id: application.id, action: "reject" })}
                             >
                               <X size={16} className="mr-2" />
                               Reject
                             </Button>
                             <Button
-                              className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                               onClick={() => setConfirmAction({ id: application.id, action: "approve" })}
                             >
                               <Check size={16} className="mr-2" />
@@ -440,7 +440,7 @@ export default function CafeteriaApprovals() {
                         {application.status === "approved" && (
                           <Button
                             variant="outline"
-                            className="bg-[#0f1424] border-gray-700 text-red-500"
+                            className="glass-effect border-white/20 hover:border-red-500/50 text-red-400 hover:text-red-300"
                             onClick={() => setConfirmAction({ id: application.id, action: "reject" })}
                           >
                             <X size={16} className="mr-2" />
@@ -458,7 +458,7 @@ export default function CafeteriaApprovals() {
                         )}
                         <Button
                           variant="outline"
-                          className="bg-[#0f1424] border-gray-700 text-blue-500"
+                          className="glass-effect border-white/20 hover:border-blue-500/50 text-blue-400 hover:text-blue-300"
                           onClick={() => openEmailDialog(application.id, application.status === 'approved' ? 'approval' : application.status === 'rejected' ? 'rejection' : 'under_review')}
                         >
                           <Send size={16} className="mr-2" />
@@ -466,7 +466,7 @@ export default function CafeteriaApprovals() {
                         </Button>
                         <Button
                           variant="outline"
-                          className="ml-auto bg-[#0f1424] border-gray-700"
+                          className="ml-auto glass-effect border-white/20 hover:border-white/40"
                           onClick={() => setViewDetailsId(application.id)}
                         >
                           View Details
@@ -491,7 +491,7 @@ export default function CafeteriaApprovals() {
 
       {/* Confirmation Dialog */}
       <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <DialogContent className="bg-[#1a1f36] border-gray-700 text-white">
+        <DialogContent className="glass-effect border-white/20 text-white">
           <DialogHeader>
             <DialogTitle>{confirmAction?.action === "approve" ? "Approve Cafeteria" : "Reject Cafeteria"}</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -502,9 +502,9 @@ export default function CafeteriaApprovals() {
           </DialogHeader>
 
           {confirmAction && (
-            <div className="p-4 bg-[#0f1424] rounded-md mb-4">
+            <div className="p-4 glass-effect border-white/10 rounded-md mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full glass-effect border-white/10 overflow-hidden flex items-center justify-center">
                   <User size={20} className="text-white" />
                 </div>
                 <div>
@@ -517,7 +517,7 @@ export default function CafeteriaApprovals() {
 
           <DialogFooter className="flex gap-2 sm:justify-end">
             <DialogClose asChild>
-              <Button variant="outline" className="bg-[#0f1424] border-gray-700">
+              <Button variant="outline" className="glass-effect border-white/20 hover:border-white/40">
                 Cancel
               </Button>
             </DialogClose>
@@ -541,7 +541,7 @@ export default function CafeteriaApprovals() {
 
       {/* View Details Dialog */}
       <Dialog open={!!viewDetailsId} onOpenChange={(open) => !open && setViewDetailsId(null)}>
-        <DialogContent className="bg-[#1a1f36] border-gray-700 text-white max-w-3xl">
+        <DialogContent className="glass-effect border-white/20 text-white max-w-3xl">
           {viewDetailsId && (
             <>
               <DialogHeader>
@@ -550,11 +550,11 @@ export default function CafeteriaApprovals() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
                 <div className="md:col-span-1">
-                  <div className="rounded-lg overflow-hidden bg-[#0f1424] aspect-square relative flex items-center justify-center">
+                  <div className="rounded-lg overflow-hidden glass-effect border-white/10 aspect-square relative flex items-center justify-center">
                     <User size={64} className="text-gray-400" />
                   </div>
 
-                  <div className="mt-4 bg-[#0f1424] p-4 rounded-lg">
+                  <div className="mt-4 glass-effect border-white/10 p-4 rounded-lg">
                     <h3 className="font-medium mb-2">Status</h3>
                     <div
                       className={`px-3 py-2 ${getStatusBadge(getApplicationDetails(viewDetailsId)?.status || "pending")} rounded-md text-center capitalize font-medium`}
@@ -572,7 +572,7 @@ export default function CafeteriaApprovals() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <div className="bg-[#0f1424] p-4 rounded-lg mb-4">
+                  <div className="glass-effect border-white/10 p-4 rounded-lg mb-4">
                     <h3 className="font-medium mb-3">{getApplicationDetails(viewDetailsId)?.name}</h3>
                     <div className="flex items-center text-sm text-gray-400 mb-4">
                       <MapPin size={14} className="mr-1" />
@@ -614,7 +614,7 @@ export default function CafeteriaApprovals() {
 
                   <div className="flex gap-2 justify-end">
                     <DialogClose asChild>
-                      <Button variant="outline" className="bg-[#0f1424] border-gray-700">
+                      <Button variant="outline" className="glass-effect border-white/20 hover:border-white/40">
                         Close
                       </Button>
                     </DialogClose>
@@ -623,7 +623,7 @@ export default function CafeteriaApprovals() {
                       <>
                         <Button
                           variant="outline"
-                          className="bg-[#0f1424] border-gray-700 text-red-500"
+                          className="glass-effect border-white/20 hover:border-red-500/50 text-red-400 hover:text-red-300"
                           onClick={() => {
                             setViewDetailsId(null)
                             setConfirmAction({ id: viewDetailsId, action: "reject" })
@@ -648,7 +648,7 @@ export default function CafeteriaApprovals() {
                     {getApplicationDetails(viewDetailsId)?.status === "approved" && (
                       <Button
                         variant="outline"
-                        className="bg-[#0f1424] border-gray-700 text-red-500"
+                        className="glass-effect border-white/20 hover:border-red-500/50 text-red-400 hover:text-red-300"
                         onClick={() => {
                           setViewDetailsId(null)
                           setConfirmAction({ id: viewDetailsId, action: "reject" })
@@ -681,7 +681,7 @@ export default function CafeteriaApprovals() {
 
       {/* Send Email Dialog */}
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
-        <DialogContent className="bg-[#1a1f36] border-gray-700 text-white max-w-2xl">
+        <DialogContent className="glass-effect border-white/20 text-white max-w-2xl">
           <DialogHeader>
             <DialogTitle>Send Email to Applicant</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -695,7 +695,7 @@ export default function CafeteriaApprovals() {
               <select
                 value={emailType}
                 onChange={(e) => setEmailType(e.target.value as any)}
-                className="w-full p-2 bg-[#0f1424] border border-gray-700 rounded-md text-white"
+                className="w-full p-2 glass-effect border-white/20 rounded-md text-white focus:border-white/40"
               >
                 <option value="approval">Approval Email</option>
                 <option value="rejection">Rejection Email</option>
@@ -710,12 +710,12 @@ export default function CafeteriaApprovals() {
                 value={customEmailMessage}
                 onChange={(e) => setCustomEmailMessage(e.target.value)}
                 placeholder="Add any additional message or specific requirements..."
-                className="w-full p-3 bg-[#0f1424] border border-gray-700 rounded-md text-white min-h-[100px] resize-none"
+                className="w-full p-3 glass-effect border-white/20 rounded-md text-white min-h-[100px] resize-none focus:border-white/40"
               />
             </div>
 
             {selectedApplicationForEmail && (
-              <div className="bg-[#0f1424] p-4 rounded-md">
+              <div className="glass-effect border-white/10 p-4 rounded-md">
                 <h4 className="font-medium mb-2">Recipient Information</h4>
                 <div className="text-sm text-gray-400">
                   <p><strong>Business:</strong> {getApplicationDetails(selectedApplicationForEmail)?.name}</p>
@@ -728,7 +728,7 @@ export default function CafeteriaApprovals() {
 
           <DialogFooter className="flex gap-2 sm:justify-end">
             <DialogClose asChild>
-              <Button variant="outline" className="bg-[#0f1424] border-gray-700">
+              <Button variant="outline" className="glass-effect border-white/20 hover:border-white/40">
                 Cancel
               </Button>
             </DialogClose>
