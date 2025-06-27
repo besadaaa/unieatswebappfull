@@ -124,50 +124,7 @@ export default function CafeteriaRatingsPage() {
     }
   }
 
-  // Handle export data
-  const handleExportData = async () => {
-    try {
-      toast({
-        title: "Exporting ratings data",
-        description: "Your data export has started and will be ready shortly.",
-      })
 
-      console.log('🔄 Starting ratings export...')
-      const response = await fetch('/api/admin/ratings/export')
-
-      console.log('📡 Export response status:', response.status)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Export failed with response:', errorText)
-        throw new Error(`Export failed: ${response.status} ${response.statusText}`)
-      }
-
-      const blob = await response.blob()
-      console.log('📦 Blob created, size:', blob.size)
-
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.setAttribute("download", `cafeteria-ratings-${new Date().toISOString().split('T')[0]}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      toast({
-        title: "Export complete",
-        description: "Ratings data has been exported successfully.",
-      })
-    } catch (error) {
-      console.error('💥 Export error:', error)
-      toast({
-        title: "Export failed",
-        description: `There was an error exporting the data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      })
-    }
-  }
 
   // Filter and sort cafeterias based on search query and sort option
   const filteredCafeterias = cafeteriaRatings
@@ -256,10 +213,7 @@ export default function CafeteriaRatingsPage() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" className="glass-effect border-white/20 hover:border-purple-500/50 btn-modern" onClick={handleExportData}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
+
 
 
           </div>
@@ -328,7 +282,7 @@ export default function CafeteriaRatingsPage() {
               ))}
             </div>
 
-            <Card className="bg-[#1a1f36] border-0">
+            <Card className="glass-effect border-white/10">
               <CardHeader>
                 <CardTitle>Top Rated Menu Items</CardTitle>
                 <CardDescription>Highest rated items across all cafeterias</CardDescription>
@@ -436,7 +390,7 @@ export default function CafeteriaRatingsPage() {
                       <h4 className="font-medium mb-2">Recent Reviews</h4>
                       <div className="space-y-3">
                         {cafe.recentReviews.map((review) => (
-                          <div key={review.id} className="bg-[#0f1424] p-3 rounded-md">
+                          <div key={review.id} className="glass-effect border-white/10 p-3 rounded-md">
                             <div className="flex justify-between items-start">
                               <div className="font-medium">{review.user}</div>
                               <div className="flex items-center">
@@ -459,7 +413,7 @@ export default function CafeteriaRatingsPage() {
           </TabsContent>
 
           <TabsContent value="items" className="space-y-4">
-            <Card className="bg-[#1a1f36] border-0">
+            <Card className="glass-effect border-white/10">
               <CardHeader>
                 <CardTitle>Top Rated Menu Items</CardTitle>
                 <CardDescription>Highest rated items across all cafeterias</CardDescription>
@@ -499,7 +453,7 @@ export default function CafeteriaRatingsPage() {
           </TabsContent>
 
           <TabsContent value="reviews" className="space-y-4">
-            <Card className="bg-[#1a1f36] border-0">
+            <Card className="glass-effect border-white/10">
               <CardHeader>
                 <CardTitle>Recent Reviews</CardTitle>
                 <CardDescription>Latest reviews across all cafeterias</CardDescription>
@@ -548,8 +502,8 @@ export default function CafeteriaRatingsPage() {
 
         {/* Cafeteria Details Modal */}
         {selectedCafeteriaDetails && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#1a1f36] rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="glass-effect border-white/10 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -575,7 +529,7 @@ export default function CafeteriaRatingsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-[#0f1424] p-3 rounded-md">
+                  <div className="glass-effect border-white/10 p-3 rounded-md">
                     <div className="text-sm text-gray-400 mb-1">Food Quality</div>
                     <div className="flex items-center">
                       <Rating
@@ -587,7 +541,7 @@ export default function CafeteriaRatingsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-[#0f1424] p-3 rounded-md">
+                  <div className="glass-effect border-white/10 p-3 rounded-md">
                     <div className="text-sm text-gray-400 mb-1">Service</div>
                     <div className="flex items-center">
                       <Rating
@@ -599,7 +553,7 @@ export default function CafeteriaRatingsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-[#0f1424] p-3 rounded-md">
+                  <div className="glass-effect border-white/10 p-3 rounded-md">
                     <div className="text-sm text-gray-400 mb-1">Cleanliness</div>
                     <div className="flex items-center">
                       <Rating
@@ -611,7 +565,7 @@ export default function CafeteriaRatingsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-[#0f1424] p-3 rounded-md">
+                  <div className="glass-effect border-white/10 p-3 rounded-md">
                     <div className="text-sm text-gray-400 mb-1">Value for Money</div>
                     <div className="flex items-center">
                       <Rating
@@ -627,7 +581,7 @@ export default function CafeteriaRatingsPage() {
                 <h3 className="font-bold text-lg mb-3">Recent Reviews</h3>
                 <div className="space-y-4">
                   {selectedCafeteriaDetails.recentReviews.map((review) => (
-                    <div key={review.id} className="bg-[#0f1424] p-4 rounded-md">
+                    <div key={review.id} className="glass-effect border-white/10 p-4 rounded-md">
                       <div className="flex justify-between items-start">
                         <div className="font-medium">{review.user}</div>
                         <div className="flex items-center">

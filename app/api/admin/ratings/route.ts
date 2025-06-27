@@ -122,9 +122,9 @@ export async function GET(request: NextRequest) {
         ? userRatings.reduce((sum, r) => sum + r.rating, 0) / totalRatings 
         : 0
 
-      // Get recent reviews (last 5)
-      const recentReviews = userRatings
-        .slice(0, 5)
+      // Get recent reviews (last 5) - include both cafeteria and menu item reviews
+      const cafeteriaReviews = userRatings
+        .slice(0, 3)
         .map(rating => {
           const userProfile = profilesMap.get(rating.user_id)
           return {
@@ -132,9 +132,39 @@ export async function GET(request: NextRequest) {
             user: userProfile?.full_name || 'Anonymous',
             rating: rating.rating,
             comment: rating.comment || '',
-            date: new Date(rating.created_at).toLocaleDateString()
+            date: new Date(rating.created_at).toLocaleDateString(),
+            type: 'cafeteria',
+            menuItem: null
           }
         })
+
+      // Get menu item reviews for this cafeteria
+      const cafeteriaMenuItems = menuItems?.filter(item => item.cafeteria_id === cafeteria.id) || []
+      const cafeteriaMenuItemIds = cafeteriaMenuItems.map(item => item.id)
+      const menuItemReviewsForCafeteria = menuItemRatings?.filter(rating =>
+        cafeteriaMenuItemIds.includes(rating.menu_item_id)
+      ) || []
+
+      const menuItemReviews = menuItemReviewsForCafeteria
+        .slice(0, 2)
+        .map(rating => {
+          const userProfile = profilesMap.get(rating.user_id)
+          const menuItem = cafeteriaMenuItems.find(item => item.id === rating.menu_item_id)
+          return {
+            id: `menu-${rating.id}`,
+            user: userProfile?.full_name || 'Anonymous',
+            rating: rating.rating,
+            comment: rating.review_comment || '',
+            date: new Date(rating.created_at).toLocaleDateString(),
+            type: 'menu_item',
+            menuItem: menuItem?.name || 'Unknown Item'
+          }
+        })
+
+      // Combine and sort all reviews by date
+      const recentReviews = [...cafeteriaReviews, ...menuItemReviews]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5)
 
       cafeteriaRatingsMap.set(cafeteria.id, {
         id: cafeteria.id,

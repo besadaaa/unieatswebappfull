@@ -188,7 +188,7 @@ export function MobileNotificationsPanel({ isOpen, onClose }: MobileNotification
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black bg-opacity-50 flex flex-col"
+          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col"
           role="dialog"
           aria-modal="true"
           aria-labelledby="notifications-title"
