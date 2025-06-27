@@ -1770,7 +1770,7 @@ export default function MenuPage() {
                         {selectedIngredients.length > 0 ? (
                           <div className="space-y-2">
                             {selectedIngredients.map((ingredient) => (
-                              <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 glass-effect rounded-lg border border-orange-500/30"
+                              <div key={ingredient.inventoryItemId} className="flex items-center justify-between p-3 glass-effect rounded-lg border border-orange-500/30">
                                 <div className="flex-1">
                                   <span className="font-medium text-white">{ingredient.name}</span>
                                 </div>
